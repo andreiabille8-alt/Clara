@@ -1,0 +1,18 @@
+{
+  "name": "clara",
+  "version": "0.1.0",
+  "description": "Clara — a voice-first thinking app. Talk, it stores, sorts, connects, and learns how you think.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

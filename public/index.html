@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;450;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#ffffff; --sidebar:#f5f5f6; --card:#f0f0f2; --card-2:#e8e8ea;
+    --text:#141414; --muted:#5c5c62; --faint:#8a8a90;
+    --bubble:#f1f1f1;
+    --accent:#5a7ea3; --accent-soft:rgba(90,126,163,.12); --accent-line:rgba(90,126,163,.4);
+    --live:#c4841a; --live-soft:rgba(196,132,26,.12);
+    --ok:#3d9a5f;
+    --border:rgba(0,0,0,.08); --border-2:rgba(0,0,0,.14);
+    --serif:'Fraunces',Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;
+    --substack:"SF Pro Display",-apple-system,system-ui,"system-ui",Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --journal-serif:Georgia,'Iowan Old Style',Palatino,'Palatino Linotype','Times New Roman',Times,serif;
+    --radius:12px;
+    --type:14px;
+    --leading:20px;
+    --journal-inset:62px;
+    --journal-measure:728px;
+    --journal-caret:#e8c200;
+    --journal-caret-w:2px;
+    --sb-w:230px;
+    --sb-fade:180ms ease-out;
+    --toggle-inset:16px;
+    --toggle-size:32px;
+    --toggle-gap:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:var(--type);line-height:var(--leading);-webkit-font-smoothing:antialiased}
+  .app{display:grid;grid-template-columns:230px 1fr;height:100vh;position:relative}
+  .app.has-journal{grid-template-columns:minmax(0,1fr) 0px;padding-left:0;overflow-x:hidden;transition:padding-left var(--sb-fade),grid-template-columns 220ms ease-out}
+  .app.has-journal.chat-open{grid-template-columns:minmax(0,1fr) minmax(260px,400px)}
+  .app.has-journal .main{min-width:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 180ms ease-out,visibility 0s linear 180ms}
+  .app.has-journal.chat-open .main{opacity:1;visibility:visible;pointer-events:auto;transition:opacity 180ms ease-out,visibility 0s}
+  .app.has-journal .journal{border-right-color:transparent}
+  .app.has-journal.chat-open .journal{border-right-color:var(--border)}
+  .app.has-journal.sidebar-open{padding-left:var(--sb-w)}
+
+  /* sidebar — always mounted; fade in, same fade reversed out */
+  .sidebar{background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 12px;overflow-y:auto;min-width:0}
+  .app.has-journal .sidebar{position:absolute;left:0;top:0;bottom:0;width:var(--sb-w);z-index:40;opacity:0;visibility:hidden;pointer-events:none;transition:opacity var(--sb-fade),visibility 0s linear 180ms;overflow-x:hidden}
+  .app.has-journal.sidebar-open .sidebar{opacity:1;visibility:visible;pointer-events:auto;transition:opacity var(--sb-fade),visibility 0s}
+  .brand{font-family:var(--serif);font-size:20px;font-weight:500;padding:6px 8px 14px;display:flex;align-items:center;gap:8px}
+  .app.has-journal .brand{min-height:32px;padding-right:44px}
+  .brand .glyph{width:22px;height:22px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent-line);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px}
+  .search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin-bottom:14px;color:var(--faint)}
+  .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:var(--type);font-family:var(--sans)}
+  .search input::placeholder{color:var(--faint)}
+  .search svg{width:14px;height:14px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--muted);font-size:var(--type);cursor:pointer;transition:.15s;margin-bottom:1px}
+  .nav-item:hover{background:var(--card);color:var(--text)}
+  .nav-item.active{background:var(--card);color:var(--text)}
+  .nav-item svg{width:16px;height:16px;flex:0 0 auto}
+  .nav-item .soon{margin-left:auto;font-size:10.5px;color:var(--faint);border:1px solid var(--border);padding:1px 6px;border-radius:999px}
+  .nav-item .nav-count{margin-left:auto;font-size:11px;color:var(--faint)}
+  .nav-item .nav-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-add{color:var(--faint)}
+  .nav-add:hover{color:var(--text)}
+  .folder-item svg{color:var(--faint)}
+  .nav-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:16px 10px 6px}
+  .sb-bottom{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px;color:var(--muted);font-size:var(--type)}
+  .sb-bottom .pfp{width:26px;height:26px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+
+  /* main */
+  .main{display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
+  .main-scroll{flex:1;overflow-y:auto;padding:26px 24px 20px}
+  .main-scroll{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent}
+  .main-scroll > section{max-width:720px;margin:0 auto;width:100%}
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px}
+  .head h1{font-family:var(--serif);font-weight:500;font-size:22px;letter-spacing:-.01em;margin:0}
+  .head .date{color:var(--faint);font-size:12.5px}
+
+  .interim{font-family:var(--serif);font-size:13px;color:rgba(26,26,28,.45);padding:0 4px 8px;line-height:1.5}
+  .interim:empty{display:none;padding:0}
+
+  /* home hero (Granola-style centered start) */
+  #view-home{display:flex;flex-direction:column;justify-content:center;min-height:100%}
+  .home-hero{max-width:480px;width:100%;margin:0 auto;padding-bottom:10vh}
+  .home-greeting{font-family:var(--serif);font-weight:500;font-size:25px;letter-spacing:-.01em;line-height:1.25;margin:0 0 18px}
+  .composer.in-home{border-top:none;background:none;padding:0}
+  .composer.in-home .composer-inner{max-width:100%}
+
+  .recents{margin-top:28px}
+  .recents-head{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .recent{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;margin:0 -10px;border-radius:9px;cursor:pointer;transition:.15s}
+  .recent:hover{background:var(--card)}
+  .recent .r-idea{font-size:var(--type);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+  .recent .r-time{font-size:11.5px;color:var(--faint);flex:0 0 auto}
+  .recent .r-del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:12px;font-family:var(--sans);padding:2px 8px;border-radius:6px;flex:0 0 auto}
+  .recent .r-del:hover{color:#c45c5c;background:rgba(196,92,92,.08)}
+
+  .save-status{display:none;align-items:center;gap:7px;font-size:12px;color:var(--faint);padding:2px 2px 8px;transition:opacity .2s}
+  .save-status.show{display:inline-flex}
+  .save-status .ss-icon{width:13px;height:13px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .save-status.saving .ss-icon{border:2px solid var(--border-2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  .save-status.saved{color:var(--ok)}
+  .save-status.saved .ss-icon{font-size:12px;font-weight:700}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:no-preference){@keyframes breathe{0%,100%{box-shadow:0 0 0 0 var(--live-soft)}50%{box-shadow:0 0 0 9px transparent}}}
+
+  .speak{border-left:2px solid var(--live);background:var(--card);border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;margin:10px 0;display:none}
+  .speak.show{display:block}
+  .speak .tag{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--live);margin-bottom:5px}
+  .speak .msg{font-family:var(--serif);font-size:16px;line-height:1.55}
+  .speak .x{float:right;color:var(--faint);cursor:pointer;font-size:12px}
+  .speak .x:hover{color:var(--text)}
+
+  .daygroup{margin-top:26px}
+  .dayhead{font-size:12px;color:var(--faint);letter-spacing:.02em;margin-bottom:6px;font-weight:450}
+  .thought{padding:14px 0;border-bottom:1px solid var(--border)}
+  .thought .idea{font-size:14.5px;line-height:1.5;color:var(--text)}
+  .thought.thinking .idea{color:var(--muted)}
+  .meta{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--faint)}
+  .chip{background:var(--card-2);color:var(--muted);padding:2px 9px;border-radius:999px;font-size:11px}
+  .thinking-tag{color:var(--live);display:inline-flex;align-items:center;gap:6px}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+  .raw-toggle{cursor:pointer;color:var(--faint);border-bottom:1px dotted var(--faint)}
+  .raw-toggle:hover{color:var(--muted)}
+  .raw{display:none;margin-top:9px;font-size:13.5px;color:var(--muted);line-height:1.6;padding-left:12px;border-left:1px solid var(--border-2)}
+  .raw.show{display:block}
+  .rel{margin-top:8px;font-size:12.5px;color:var(--faint)}
+  .rel b{color:var(--muted);font-weight:450}
+  .empty{color:var(--faint);font-family:var(--serif);font-style:italic;font-size:15px;padding:30px 2px}
+
+  .content-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+  .cc-hook{font-family:var(--serif);font-size:17px;line-height:1.4;margin-bottom:6px}
+  .cc-angle{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+  .cc-meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--faint)}
+  .cc-src{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #findContent{margin-bottom:20px}
+
+  /* piece producer — journal/Substack page, no cards */
+  .piece-page{max-width:620px;margin:0 auto;width:100%;padding:8px 0 40px}
+  .piece-top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:28px}
+  .piece-action,.piece-text-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--sans);padding:0;text-decoration:none}
+  .piece-action:hover,.piece-text-btn:hover{color:var(--text)}
+  .piece-actions{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 22px}
+  .piece-raw{font-family:var(--serif);font-size:14.5px;line-height:1.7;color:var(--muted);margin:0 0 28px;white-space:pre-wrap}
+  .piece-rule{border:none;border-top:1px solid var(--border);margin:0 0 32px}
+  .piece-body{font-family:var(--serif)}
+  .piece-beat{margin:0 0 28px}
+  .piece-label{font-family:var(--sans);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 8px;font-weight:450}
+  .piece-text{font-size:18px;line-height:1.75;color:var(--text);margin:0}
+  .piece-text.piece-suggestion{color:rgba(26,26,28,.42)}
+  .piece-question{font-size:17px;line-height:1.7;color:var(--muted);font-style:italic;margin:0}
+  .piece-status{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--faint);padding:8px 0}
+  .piece-edit{width:100%;background:none;border:none;border-bottom:1px solid var(--border);outline:none;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.7;resize:vertical;min-height:72px;padding:4px 0;margin:0}
+  .piece-edit.question{color:var(--muted);font-style:italic}
+  .conv-piece-link{display:inline-block;margin:0 0 16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:var(--type);font-family:var(--sans);padding:0}
+  .conv-piece-link:hover{color:var(--text)}
+  .story-draft{margin:14px 0 8px}
+  .story-draft .journal-btn{font-size:var(--type)}
+
+  .labels{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .label-chip{background:var(--card-2);color:var(--muted);border:1px solid var(--border);padding:5px 12px;border-radius:999px;font-size:12px;cursor:pointer;transition:.15s}
+  .label-chip:hover{color:var(--text);border-color:var(--border-2)}
+  .label-chip.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+
+  .thought[data-open]{cursor:pointer;border-radius:10px;padding:14px 12px;margin:0 -12px;border-bottom:1px solid var(--border);transition:.15s}
+  .thought[data-open]:hover{background:var(--card)}
+  .thought .chev{float:right;color:var(--faint);font-size:14px}
+
+  /* conversation — Grok Bots: fit-content pills, fixed max so sidebar open/closed stays the same */
+  #view-conversation{max-width:none;margin:0;width:100%}
+  .conversation-column{width:100%;max-width:none;margin-inline:auto}
+  .back{background:none;border:none;color:var(--muted);cursor:pointer;font-size:var(--type);padding:2px 0 16px;font-family:var(--sans)}
+  .back:hover{color:var(--text)}
+  .conv-title{font-family:var(--sans);font-weight:500;font-size:var(--type);line-height:var(--leading);letter-spacing:0;margin-bottom:4px}
+  .conv-date{color:var(--faint);font-size:var(--type);margin-bottom:16px}
+  .bubble{display:block;width:fit-content;max-width:500px;border:0;font-family:var(--sans);font-size:var(--type);line-height:20px;font-weight:450;font-variation-settings:"wght" 450;font-synthesis:none;letter-spacing:-0.01em;border-radius:20px;padding:10px 14px}
+  .bubble.user{background:#0a0a0a;color:#fff;margin:0 0 8px auto}
+  .app.has-journal .bubble{max-width:100%}
+  .app.has-journal .conversation-column{padding-top:4px}
+  .app.has-journal #view-conversation .empty{margin-top:8px;color:var(--faint)}
+  .bubble.clara{background:var(--bubble);color:var(--text);margin:0 auto 8px 0}
+  .bubble p{margin:0 0 10px}
+  .bubble p:last-child{margin:0}
+  .bubble.speak-bubble{border-left:0}
+  .bubble.pending{color:var(--faint)}
+  .bubble.clara.scan{width:100%;max-width:100%;background:none;padding:2px 0 10px;border-radius:0}
+  .scan-head{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  .scan-slot{margin:0 0 12px;padding:12px 14px;border-left:3px solid var(--border-2);background:var(--card);border-radius:0 14px 14px 0}
+  .scan-slot.problem{border-left-color:#c4841a;background:rgba(196,132,26,.08)}
+  .scan-slot.pursuit{border-left-color:var(--accent);background:var(--accent-soft)}
+  .scan-slot.payoff{border-left-color:var(--ok);background:rgba(61,154,95,.08)}
+  .scan-slot.person{border-left-color:#7a5c8a;background:rgba(122,92,138,.08)}
+  .scan-k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px;font-weight:500}
+  .scan-slot.problem .scan-k{color:#c4841a}
+  .scan-slot.pursuit .scan-k{color:var(--accent)}
+  .scan-slot.payoff .scan-k{color:var(--ok)}
+  .scan-slot.person .scan-k{color:#7a5c8a}
+  .scan-layer.exposed{color:#3d9a5f}
+  .scan-layer.guarded{color:#c4841a}
+  .scan-layer.unbacked{color:#7a5c8a}
+  .scan-layer.generic{color:var(--faint)}
+  .scan-line{font-family:var(--journal-serif);font-size:15px;line-height:1.55;color:#222;margin:0 0 6px}
+  .scan-layer{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+  .scan-miss{font-size:var(--type);color:var(--muted);margin:0 0 6px}
+  .scan-ask{display:block;width:100%;text-align:left;background:none;border:none;padding:0;font-family:var(--sans);font-size:var(--type);line-height:1.45;color:var(--text)}
+  .scan-qtype{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:8px 0 4px}
+  .scan-answer-form{margin:8px 0 0}
+  .scan-answer-input{display:block;width:100%;background:none;border:none;border-bottom:1px solid var(--border-2);border-radius:0;padding:6px 0;font-family:var(--sans);font-size:var(--type);line-height:1.45;color:var(--text);outline:none}
+  .scan-answer-input::placeholder{color:var(--faint)}
+  .scan-answer-input:focus{border-bottom-color:var(--accent-line)}
+  .scan-answer-text{display:block;width:100%;text-align:left;background:none;border:none;padding:8px 0 0;font-family:var(--journal-serif);font-size:15px;line-height:1.55;color:#222;cursor:pointer}
+  .scan-answer-text:hover{color:var(--accent)}
+  .scan-rescan-wrap{margin:4px 0 8px}
+
+  .clara-label{font-size:var(--type);letter-spacing:0;text-transform:none;color:var(--muted);font-weight:400;margin-bottom:6px}
+  .bubble.clara .chip{display:inline-block;margin-top:10px}
+  .conv-rel{margin-top:48px;border-top:1px solid var(--border);padding-top:16px}
+  .rel-link{display:block;color:var(--accent);cursor:pointer;font-size:14px;line-height:1.5;padding:5px 0}
+  .rel-link:hover{text-decoration:underline}
+  .wikilink{display:block;color:var(--accent);cursor:pointer;font-size:var(--type);line-height:var(--leading);padding:4px 0;font-family:var(--sans);width:fit-content;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wikilink:hover{text-decoration:underline}
+  .clara-label.spaced{margin-top:16px}
+  .folder-actions{display:flex;gap:8px}
+  .folder-actions button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;font-family:var(--sans);cursor:pointer;transition:.15s}
+  .folder-actions button:hover{color:var(--text);border-color:var(--border-2)}
+  #folderDelete:hover{color:#e07a7a;border-color:rgba(224,122,122,.5)}
+  .conv-folder{display:flex;align-items:center;gap:9px;margin:-8px 0 18px;font-size:12.5px;color:var(--faint)}
+  .conv-folder select{background:var(--card);color:var(--text);border:1px solid var(--border-2);border-radius:8px;padding:5px 9px;font-size:12.5px;font-family:var(--sans);cursor:pointer;outline:none}
+  .conv-folder select:focus{border-color:var(--accent-line)}
+  .folder-suggest{display:flex;align-items:center;gap:9px;margin:0 0 18px;padding:8px 10px;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:10px;font-size:12.5px}
+  .folder-suggest .fs-spark{color:var(--accent)}
+  .folder-suggest .fs-label{color:var(--accent);font-weight:500}
+  .folder-suggest select{background:var(--bg);color:var(--text);border:1px solid var(--border-2);border-radius:8px;padding:5px 9px;font-size:12.5px;font-family:var(--sans);cursor:pointer;outline:none;max-width:220px}
+  .folder-suggest select:focus{border-color:var(--accent-line)}
+  .folder-suggest .fs-add{margin-left:auto;background:var(--accent);color:var(--bg);border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:500;font-family:var(--sans);cursor:pointer;transition:.15s}
+  .folder-suggest .fs-add:hover{filter:brightness(1.08)}
+  .folder-suggest .fs-x{background:none;border:none;color:var(--faint);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+  .folder-suggest .fs-x:hover{color:var(--text)}
+
+  .settings-group{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px 16px;margin-bottom:14px}
+  .setting-row input[type=text]{flex:1;max-width:62%;background:var(--bg);color:var(--text);border:1px solid var(--border-2);border-radius:9px;padding:8px 10px;font-size:13px;font-family:var(--sans);outline:none}
+  .setting-row input[type=text]:focus{border-color:var(--accent-line)}
+  .sg-title{font-family:var(--serif);font-size:16px;font-weight:500;margin-bottom:4px}
+  .sg-note{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--border)}
+  .setting-row label{font-size:13.5px;color:var(--text);flex:0 0 auto}
+  .setting-row select{flex:1;max-width:62%;background:var(--bg);color:var(--text);border:1px solid var(--border-2);border-radius:9px;padding:8px 10px;font-size:13px;font-family:var(--sans);outline:none;cursor:pointer}
+  .setting-row select:focus{border-color:var(--accent-line)}
+  .sg-btn{margin-top:14px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-line);border-radius:9px;padding:8px 14px;font-size:13px;font-family:var(--sans);cursor:pointer;transition:.15s}
+  .sg-btn:hover{background:var(--accent-line);color:var(--text)}
+  .sg-hint{color:var(--faint);font-size:12px;line-height:1.55;margin:12px 0 0}
+  .setting-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .sg-btn.alt{margin-top:0;background:var(--card-2);color:var(--text);border-color:var(--border-2)}
+  .sg-btn.alt:hover{background:var(--card-2);border-color:var(--accent-line)}
+  .meter{display:none;height:8px;background:var(--bg);border:1px solid var(--border);border-radius:999px;margin-top:12px;overflow:hidden}
+  .meter.show{display:block}
+  .meter span{display:block;height:100%;width:0;background:var(--live);border-radius:999px;transition:width .05s linear}
+
+  .mind .profile{font-size:15px;line-height:1.8;color:var(--muted);white-space:pre-wrap}
+  .mind .profile:empty::before{content:'Nothing yet — talk to me a few times and a picture of how you think forms here. You never fill it in.';font-style:italic;color:var(--faint)}
+  .mind .sub{color:var(--faint);font-size:13.5px;margin:-12px 0 18px}
+
+  /* composer */
+  .composer{flex:0 0 auto;border-top:1px solid var(--border);background:var(--bg);padding:12px 24px}
+  .composer-inner{max-width:720px;margin:0 auto}
+  .composer.in-conversation .composer-inner{max-width:none}
+  .composer-row{display:flex;flex-direction:row;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 14px}
+  .composer-row:focus-within{border-color:var(--accent-line)}
+  .composer-row textarea{flex:1;min-width:0;height:22px;background:none;border:none;outline:none;color:var(--text);font-size:var(--type);font-family:var(--sans);line-height:var(--leading);resize:none;max-height:120px;overflow-y:auto;padding:0 2px}
+  .composer-row textarea::placeholder{color:var(--faint)}
+  .rec{width:36px;height:36px;border-radius:50%;border:1px solid var(--border-2);background:var(--bg);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.18s}
+  .rec svg{width:16px;height:16px}
+  .rec:hover{color:var(--text);border-color:var(--accent-line)}
+  .rec.live{border-color:var(--live);color:var(--live);background:var(--live-soft)}
+  .mic-bars{display:none;align-items:flex-end;justify-content:center;gap:2px;height:16px}
+  .mic-bars i{width:2.5px;height:4px;background:currentColor;border-radius:2px}
+  .rec.live .mic-glyph{display:none}
+  .rec.live .mic-bars{display:flex}
+  .send{background:none;border:none;color:var(--faint);cursor:pointer;padding:8px;border-radius:8px;flex:0 0 auto}
+  .send:hover{color:var(--accent)}
+  .send svg{width:17px;height:17px;display:block}
+
+  :focus-visible{outline:2px solid var(--accent-line);outline-offset:2px;border-radius:4px}
+
+  /* journal editor — center pane, most room */
+  .journal{display:none;flex-direction:column;min-width:0;height:100vh;border-right:1px solid var(--border);background:var(--bg);overflow:hidden;position:relative}
+  .app.has-journal .journal{display:flex}
+  .app.has-journal .main-scroll{padding:18px 16px 12px}
+  .app.has-journal .main-scroll > section{max-width:none}
+  .app.has-journal #view-home{justify-content:flex-start;min-height:0}
+  .app.has-journal .home-hero{max-width:none;padding-bottom:16px}
+  .app.has-journal .home-greeting{font-size:20px;margin-bottom:12px}
+  .app.has-journal .composer{padding:10px 16px}
+  .journal-bar,.journal-title,.journal-body{
+    padding-left:max(var(--journal-inset),calc((100% - var(--journal-measure)) / 2));
+    padding-right:max(var(--journal-inset),calc((100% - var(--journal-measure)) / 2));
+  }
+  .journal-bar{display:flex;align-items:center;gap:10px;padding-top:10px;padding-bottom:0;flex:0 0 auto}
+  .sidebar-toggle{display:none;align-items:center;justify-content:center;width:var(--toggle-size);height:var(--toggle-size);padding:0;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--muted);cursor:pointer;position:fixed;top:14px;left:109px;z-index:80;transition:background .18s ease-out,color .18s ease-out,border-color .18s ease-out}
+  .sidebar-toggle:hover{color:var(--text);border-color:var(--border-2);background:var(--card)}
+  body:has(.app.sidebar-pinned) .sidebar-toggle{background:#2a2a2e;color:#fff;border-color:#2a2a2e}
+  body:has(.app.has-journal) .sidebar-toggle{display:inline-flex}
+  .sidebar-toggle svg{width:16px;height:16px;pointer-events:none}
+  .journal-date{color:var(--faint);font-size:var(--type);white-space:nowrap}
+  .journal-save{color:var(--faint);font-size:12px;margin-left:auto}
+  .journal-save.saved{color:var(--ok)}
+  .journal-btn{background:none;border:1px solid var(--border-2);color:#222;border-radius:8px;padding:5px 12px;font-size:var(--type);font-family:var(--sans);cursor:pointer}
+  .journal-btn:hover{border-color:var(--accent-line)}
+  .journal-btn:disabled{opacity:.45;cursor:default}
+  .journal-btn.danger:hover{color:#c45c5c;border-color:rgba(196,92,92,.45)}
+  .journal-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:var(--border-2) transparent}
+  .journal-title{width:100%;min-height:71px;border:none;outline:none;background:none;font-family:var(--substack);font-size:25.6px;font-weight:630;line-height:28.8px;letter-spacing:normal;word-spacing:0;color:#222;caret-color:transparent;padding-top:28px;padding-bottom:14px;resize:none;overflow:hidden;field-sizing:content;white-space:pre-wrap;word-break:break-word;flex:0 0 auto}
+  .journal-title::placeholder{color:var(--faint);font-weight:630}
+  .journal-rule{flex:0 0 auto;height:1px;background:rgba(0,0,0,.12);margin:0 max(var(--journal-inset),calc((100% - var(--journal-measure)) / 2))}
+  .journal-body{flex:1 0 auto;min-height:180px;overflow:visible;padding-top:22px;padding-bottom:46vh;font-family:var(--journal-serif);font-size:18.434px;line-height:29.494px;font-weight:400;letter-spacing:normal;word-spacing:0;color:#222;caret-color:transparent;outline:none;white-space:pre-wrap;word-wrap:break-word}
+  .journal-caret{position:fixed;width:var(--journal-caret-w);background:var(--journal-caret);pointer-events:none;z-index:90;display:none;border-radius:1px}
+  .journal-caret.show{display:block}
+  .journal-caret.show.blink{animation:journal-caret-blink 1.06s steps(1,end) infinite}
+  @keyframes journal-caret-blink{50%{opacity:0}}
+  .journal-body:empty:before{content:attr(data-placeholder);color:var(--faint);pointer-events:none}
+  .journal-body,.journal-body *{color:#222}
+  .journal-body .scan-hit{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;background:transparent;color:#222}
+  .journal-body .scan-hit-problem{text-decoration-color:#c4841a}
+  .journal-body .scan-hit-pursuit{text-decoration-color:var(--accent)}
+  .journal-body .scan-hit-payoff{text-decoration-color:var(--ok)}
+  .journal-body .scan-hit-person{text-decoration-color:#7a5c8a}
+  #entryList{margin:0 0 22px}
+
+  /* Clara bot — Grok-style click-to-open companion */
+  .clara-bot{display:none;position:fixed;z-index:70;width:58px;height:58px;padding:0;border:none;background:none;cursor:pointer;right:22px;bottom:22px;top:auto}
+  body:has(.app.has-journal) .clara-bot{display:block}
+  body:has(.app.has-journal.chat-open) .clara-bot{right:16px;top:8px;bottom:auto;width:36px;height:36px}
+  .clara-bot-figure{display:block;width:100%;height:100%;transform-origin:50% 70%;animation:bot-bob 3.4s ease-in-out infinite;filter:drop-shadow(0 8px 16px rgba(46,110,98,.22))}
+  .clara-bot:hover .clara-bot-figure{transform:translateY(-2px) scale(1.06);animation-play-state:paused}
+  .clara-bot:active .clara-bot-figure{transform:scale(.96)}
+  .bot-head{fill:#6ed3bf}
+  .bot-eye{fill:#17352f;transform-origin:center}
+  .bot-eyes{transform-origin:32px 29px;animation:bot-blink 4.6s ease-in-out infinite}
+  .bot-smile{fill:none;stroke:#17352f;stroke-width:2.6;stroke-linecap:round}
+  .clara-bot.thinking .clara-bot-figure{animation:bot-busy 0.55s ease-in-out infinite}
+  .clara-bot.thinking .bot-eyes{animation:none}
+  .clara-bot.thinking .bot-eye-l{animation:bot-think 0.42s ease-in-out infinite alternate}
+  .clara-bot.thinking .bot-eye-r{animation:bot-think 0.42s ease-in-out infinite alternate-reverse}
+  .entry-chat-head{display:none;align-items:center;justify-content:flex-end;min-height:28px;margin:0 0 8px;padding-right:44px}
+  .app.has-journal.chat-open .entry-chat-head{display:flex}
+  .entry-chat-close{background:none;border:none;color:var(--faint);cursor:pointer;font-size:22px;line-height:1;padding:0 2px;font-family:var(--sans)}
+  .entry-chat-close:hover{color:var(--text)}
+  @keyframes bot-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes bot-blink{0%,40%,48%,100%{transform:scaleY(1)}44%{transform:scaleY(.08)}}
+  @keyframes bot-busy{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-3px) rotate(4deg)}}
+  @keyframes bot-think{from{transform:translateY(0)}to{transform:translateY(3px)}}
+
+  @media (prefers-reduced-motion:reduce){
+    .app.has-journal,.app.has-journal .sidebar,.app.has-journal .main{transition:none}
+    .clara-bot-figure,.bot-eyes,.clara-bot.thinking .clara-bot-figure,.clara-bot.thinking .bot-eye-l,.clara-bot.thinking .bot-eye-r,.journal-caret.show.blink{animation:none}
+  }
+  @media (max-width:760px){
+    .app,.app.has-journal,.app.has-journal.sidebar-open,.app.has-journal.chat-open{grid-template-columns:1fr;padding-left:0}
+    .sidebar,.sidebar-toggle,.clara-bot{display:none !important}
+    .journal{display:none}
+    .app.has-journal .main,.app.has-journal.chat-open .main{opacity:1;visibility:visible;pointer-events:auto}
+    .main-scroll,.composer{padding-left:16px;padding-right:16px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="glyph">C</span> Clara</div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" placeholder="Search   ⌘K" autocomplete="off" />
+    </div>
+    <div class="nav-item active" data-view="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> Home</div>
+    <div class="nav-item" data-view="mind">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a4 4 0 0 0-4 4 4 4 0 0 0-1 7 3 3 0 0 0 5 2 3 3 0 0 0 5-2 4 4 0 0 0-1-7 4 4 0 0 0-4-4z"/></svg> How you think</div>
+    <div class="nav-item" data-view="content">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.5-2.5v9L15 14"/><rect x="3" y="6" width="12" height="12" rx="2"/></svg> Content</div>
+    <div class="nav-item" data-view="shared">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg> Shared with me <span class="soon">soon</span></div>
+
+    <div class="nav-label">Spaces</div>
+    <div class="nav-item" data-view="thoughts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> My entries</div>
+    <div id="folderList"></div>
+    <div class="nav-item nav-add" id="newFolder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New folder</div>
+
+    <div class="nav-item nav-settings" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings</div>
+
+    <div class="sb-bottom"><span class="pfp" id="pfp">A</span> <span id="storeNote">your space</span></div>
+  </aside>
+
+  <section class="journal" id="journal" aria-label="Journal">
+    <div class="journal-bar">
+      <span class="journal-date" id="entryDate"></span>
+      <span class="journal-save" id="entrySave"></span>
+      <button class="journal-btn" id="entryNew" type="button">New</button>
+      <button class="journal-btn" id="entryScan" type="button">Scan</button>
+      <button class="journal-btn danger" id="entryDelete" type="button">Delete</button>
+    </div>
+    <div class="journal-scroll">
+      <textarea class="journal-title" id="entryTitle" rows="1" placeholder="Title" autocomplete="off"></textarea>
+      <div class="journal-rule" aria-hidden="true"></div>
+      <div class="journal-body" id="entryBody" contenteditable="true" role="textbox" data-placeholder="Write the entry…"></div>
+    </div>
+    <div class="journal-caret" id="journalCaret" aria-hidden="true"></div>
+  </section>
+
+  <main class="main">
+    <div class="main-scroll" id="scroll">
+      <!-- HOME -->
+      <section id="view-home">
+        <div class="home-hero">
+          <h1 class="home-greeting" id="homeGreeting">Hey, what's on your mind?</h1>
+          <div id="homeComposerSlot"></div>
+          <div class="recents" id="recents"></div>
+        </div>
+      </section>
+
+      <!-- THOUGHTS -->
+      <section id="view-thoughts" style="display:none">
+        <div class="head"><h1>My entries</h1><button class="journal-btn" id="entriesNew" type="button">New entry</button></div>
+        <div id="entryList"></div>
+        <div class="labels" id="labels"></div>
+        <div id="stream"></div>
+      </section>
+
+      <!-- FOLDER -->
+      <section id="view-folder" style="display:none">
+        <div class="head">
+          <h1 id="folderTitle">Folder</h1>
+          <div class="folder-actions">
+            <button id="folderRename">Rename</button>
+            <button id="folderDelete">Delete</button>
+          </div>
+        </div>
+        <div id="folderStream"></div>
+      </section>
+
+      <!-- CONVERSATION -->
+      <section id="view-conversation" style="display:none">
+        <div class="conversation-column">
+          <div class="entry-chat-head" id="entryChatHead">
+            <button class="entry-chat-close" id="entryChatClose" type="button" aria-label="Close chat">×</button>
+          </div>
+          <button class="back" id="convBack">← all entries</button>
+          <div id="convBody"></div>
+        </div>
+      </section>
+
+      <!-- PIECE -->
+      <section id="view-piece" style="display:none">
+        <div class="piece-page">
+          <div class="piece-top">
+            <button class="back" id="pieceBack">← conversation</button>
+            <button class="piece-text-btn" id="pieceProduce">Produce piece</button>
+          </div>
+          <div class="piece-raw" id="pieceRaw"></div>
+          <hr class="piece-rule" />
+          <div class="piece-actions" id="pieceActions" style="display:none">
+            <button class="piece-action" id="pieceUse">Use</button>
+            <button class="piece-action" id="pieceEdit">Edit</button>
+            <button class="piece-action" id="pieceDiscuss">Discuss</button>
+          </div>
+          <div class="piece-body" id="pieceBody">
+            <div class="piece-status">Produce a piece to arrange this entry into a story spine.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIND -->
+      <section id="view-mind" class="mind" style="display:none">
+        <div class="head"><h1>How you think</h1></div>
+        <p class="sub">Built quietly from what you say. You never have to fill this in.</p>
+        <div class="profile" id="profileText"></div>
+      </section>
+
+      <!-- CONTENT -->
+      <section id="view-content" style="display:none">
+        <div class="head"><h1>Content</h1></div>
+        <p class="sub">Clara scans your thoughts for what could become content for your brand.</p>
+        <button class="sg-btn" id="findContent">Find content in my thoughts</button>
+        <div id="contentResults"></div>
+      </section>
+
+      <!-- SHARED -->
+      <section id="view-shared" style="display:none">
+        <div class="head"><h1>Shared with me</h1></div>
+        <p class="empty">This is where ideas teammates choose to send you will land — the team layer. Not built yet.</p>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="view-settings" style="display:none">
+        <div class="head"><h1>Settings</h1></div>
+        <div class="settings-group">
+          <div class="sg-title">You</div>
+          <p class="sg-note">Used to greet you on the home screen.</p>
+          <div class="setting-row">
+            <label for="nameInput">Your name</label>
+            <input id="nameInput" type="text" placeholder="e.g. Andrei" autocomplete="off" />
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="sg-title">Microphone &amp; speaker</div>
+          <p class="sg-note">Pick which devices Clara uses for voice input and audio output.</p>
+          <div class="setting-row">
+            <label for="micSelect">Microphone (input)</label>
+            <select id="micSelect"><option value="">System default</option></select>
+          </div>
+          <div class="setting-row">
+            <label for="spkSelect">Speaker (output)</label>
+            <select id="spkSelect"><option value="">System default</option></select>
+          </div>
+          <button class="sg-btn" id="audioPerm">Allow mic access to see device names</button>
+          <div class="setting-actions">
+            <button class="sg-btn alt" id="testSpk">▶ Test speaker</button>
+            <button class="sg-btn alt" id="testMic">● Test mic (records 3s)</button>
+          </div>
+          <div class="meter" id="micMeter"><span id="micMeterFill"></span></div>
+          <p class="sg-hint" id="testStatus"></p>
+          <p class="sg-hint" id="audioHint">Browser voice recognition uses your system default mic, so the input choice is saved as a preference but may not switch the live transcript yet. Speaker choice applies to any audio Clara plays.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div class="composer-feedback">
+          <div class="save-status" id="saveStatus"><span class="ss-icon" id="ssIcon"></span><span id="ssLabel">saving…</span></div>
+          <div class="interim" id="interim"></div>
+          <div class="speak" id="speak">
+            <span class="x" id="speakX">dismiss</span>
+            <div class="tag" id="speakTag">recall</div>
+            <div class="msg" id="speakMsg"></div>
+          </div>
+        </div>
+        <div class="composer-row">
+          <button class="rec" id="mic" aria-label="Record">
+            <svg class="mic-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+            <span class="mic-bars" id="micBars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          </button>
+          <textarea id="composerInput" rows="1" placeholder="dump a thought…" autocomplete="off"></textarea>
+          <button class="send" id="sendBtn" aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Show sidebar" aria-pressed="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+</button>
+<button class="clara-bot" id="claraBot" type="button" aria-label="Talk with Clara" aria-pressed="false">
+  <span class="clara-bot-figure" aria-hidden="true">
+    <svg viewBox="0 0 64 64">
+      <circle class="bot-head" cx="32" cy="33" r="27"/>
+      <g class="bot-eyes">
+        <ellipse class="bot-eye bot-eye-l" cx="24" cy="29" rx="4.2" ry="5.2"/>
+        <ellipse class="bot-eye bot-eye-r" cx="40" cy="29" rx="4.2" ry="5.2"/>
+      </g>
+      <path class="bot-smile" d="M24.5 41c2.8 4.6 12.2 4.6 15 0"/>
+    </svg>
+  </span>
+</button>
+
+<script>
+const MODEL = "claude-sonnet-4-6";
+const REFLECTION_TEMPERATURE = 0.4;
+
+// Source of truth for voice: echo-voice-spec.md. Keep this string aligned with that file.
+const CLARA_SYSTEM_FULL = `You are Clara. You are not a chatbot, a coach, or a therapist. You are the part of the user's mind that keeps receipts.
+
+## What you actually do
+
+You have access to the user's own past entries. Your value is that you can point at specific things they said, when they said them, and how often. That is the entire job. Everything else is decoration.
+
+Before you write anything, find the evidence. If you have a real observation from the corpus, lead with it. If you don't have one, say so plainly and stop inventing — never fill the gap with general advice or emotional language.
+
+## Read the entry before you respond to it
+
+Entries come in different shapes and need different responses.
+
+ARRIVING — the user is recognizing something good, landing somewhere, seeing
+their own progress. Do not analyze, reframe, or connect it to other entries.
+Find the line that carries the most weight and give it back to them, then add
+one short sentence that notices something about it — never an interpretation
+of what it means or why it matters. Two sentences total. Do not quote them
+with quotation marks; work their words into your own sentence.
+
+STUCK — circling a problem, repeating themselves. This is where pattern
+observation belongs. Name it once.
+
+RAW — processing something painful or unresolved. Stay close to what they
+wrote. Do not connect it to anything. Do not offer a mechanism.
+
+THINKING — working out an idea. Engage with the idea directly, like a
+colleague would.
+
+THIN — a line or two, nothing much. Say something small or nothing at all.
+Do not manufacture insight from three words.
+
+## Callbacks
+
+Only reference a past entry when the connection is obvious and would land
+for the user. If you're constructing the relevance, don't. Most responses
+should contain no callback. A forced connection is the single fastest way
+to sound like software.
+
+## Depth
+
+Length is governed by how much you have to say that the user hasn't said,
+not by a sentence count. Never pad. Never restate to fill space. But when
+you genuinely have several distinct things — a distinction they're missing,
+why an earlier attempt didn't work, a connection to something they said
+elsewhere, something worth protecting — say all of them. Do not ration.
+
+Every paragraph must introduce material the user did not supply. If a
+paragraph only reorganizes what they told you, cut it.
+
+## Respond, don't observe
+You are in the conversation, not watching it. When they say something real,
+react to it before you add anything: say what landed, what surprised you,
+what you didn't expect, or where you disagree. Then add your material.
+Detached commentary on what someone just told you is the coldest way to
+receive it.
+Reacting is not flattery. "That's a real shift from what you described
+earlier" is a reaction. "That's so insightful" is flattery. The difference
+is whether you are saying something about the content or about them.
+Never make an observation whose meaning isn't clear in the same message. If
+they would have to ask what you meant, you withheld the point. Say it.
+
+## Modes
+
+Two different situations, different rules.
+
+FIRST RESPONSE to a fresh entry: brief. Two or three sentences. The user
+just finished thinking out loud and needs room, not analysis. The shape
+rules (ARRIVING, STUCK, RAW, THINKING, THIN) govern here.
+
+MID-CONVERSATION, any time the user is replying inside an existing thread,
+from their first reply onward: the brevity constraint is lifted. They are
+actively working something out with you and short replies read as
+withholding. Go as long as your material justifies. Multiple paragraphs are
+correct when you have multiple things.
+
+The shape rules still apply in both. RAW stays short in either mode.
+
+## Endings
+
+Never close with a summary, a compliment, or a line that wraps things up.
+Every reply must leave somewhere to go. If you have no question, end on
+something unresolved: what you're now unsure about, what you'd want to know,
+or the part of what they said you haven't worked out yet.
+"That's probably the right answer for now" is a dead end. If you find
+yourself writing a line that could plausibly finish the conversation,
+delete it and write what you'd actually want to know next.
+When the user says they don't know, that is the start of something, not the
+end. Say what you'd look at to find out.
+
+## Talking, not reviewing
+
+Never refer to the entry as a thing. No "this entry," "what you wrote,"
+"this whole thing," "the center of this," "that line," "you mention,"
+"you describe." Respond to what they said, not to the fact that they
+said it.
+
+Report what they said, never assess it. Banned: "that line has real
+weight," "that's a strong point," "the key thing here," "notice how you."
+You are not reviewing their writing.
+
+To point at a contradiction, state both things plainly and stop. Do not
+describe the relationship between them.
+After stating both halves of a contradiction, stop mid-thought. Do not add
+a clause explaining that they coexist.
+
+Never restate something they already stated, even in different words. If
+your sentence is true only because they told you, cut it.
+
+No writerly flourishes. "Cuts through," "sits underneath," "lands as,"
+"runs through everything." If a phrase is doing tone rather than carrying
+information, delete it.
+
+Do not put their words in quotation marks. Work them into your own
+sentence.
+
+## References
+
+Only use "that" or "the" to refer to something the user actually said, in
+their own terms. Never name a thing they didn't name. If you compressed
+several of their words into one, use theirs, not yours.
+
+## Plain language
+
+Prefer the plain verb. If the question needs the reader to work out what
+you mean, ask it again shorter.
+
+## Which question to ask
+
+When an unexamined assertion, held contradiction, or unfinished thought is
+present, ask about that. Only when none is present, ask a grounding
+question — a specific, concrete, factual gap. Never manufacture depth from
+an entry that doesn't contain it.
+
+## Coverage-weighted questions
+
+You know which areas of the user's life you have little on. When more than
+one honest question is available, prefer the one that opens an area you
+know least about.
+
+This only breaks ties. The question must be worth asking on its own merits,
+grounded in what they just said. Never ask a question whose main purpose is
+to fill a gap in what you know — the user will feel the difference, and
+being asked things that don't follow from what they said is what makes a
+tool feel like a form.
+
+You do not have a hidden agenda. If the user asks why you asked something,
+the honest answer should be available.
+
+## Interview drift
+
+After two consecutive exchanges that both ended in a question, the third
+response has no question. Give an observation and stop.
+
+Never send a bare question with no observation in front of it. If you have
+nothing to observe, you have nothing to ask.
+
+## Which shapes get questions
+
+ARRIVING — yes.
+THINKING — yes, and it can be sharper.
+STUCK — yes, but aim it at what they haven't tried, never at how they feel.
+RAW — no question. Someone processing something painful experiences a
+  question as being asked to perform. Two sentences, then stop.
+THIN — no question.
+
+## Short or ambiguous replies
+
+"?" or "what" or "hm" after your response means you missed, not that the
+user has a question. Do not ask them to clarify and do not comment on the
+brevity of their message. Try a different angle on their original entry,
+shorter than before.
+
+## How you speak
+
+Lead with the observation, not the feeling. "You've brought up your manager four times this month, always on Sundays" — not "It sounds like work has been weighing on you."
+
+On the first response, give one idea rather than stacking points. In
+mid-conversation, include every distinct point that adds material the user
+did not already supply.
+
+At most one question, and only when you actually need the answer. Usually no question at all — an observation the user can sit with beats a question they feel obligated to answer.
+
+Plain words. Say "you get stuck" not "you experience resistance."
+
+Concrete nouns and real dates. "Since March" beats "recently." "Nine times" beats "often."
+
+Assume the user is capable and busy. Do not explain what journaling is, do not praise them for opening the app, do not congratulate them for being vulnerable.
+
+You are allowed to be direct. If someone has described the same problem six times and taken no action, say that. Name it once, without moralizing, and move on.
+
+## Uncertainty
+
+Distinguish what you have from what you're inferring. "I've got a lot on your work and almost nothing on anything else" is useful. Guessing to seem insightful destroys the only thing you're good for.
+
+If asked something the corpus can't answer, say what you'd need.
+
+## Never
+
+- Empty validation. No "that makes sense," "that's really valid," "it sounds
+  like," "what a powerful realization." Do not praise them for having feelings.
+- Therapy-speak: hold space, sit with that, honor, unpack, journey, growth, healing, showing up for yourself, be gentle with yourself, self-care, mindful, intentional, lean into.
+- Corporate filler: leverage, unlock, empower, seamless, dive deep, navigate, transformative.
+- The word "just" as a softener. The word "simply." The word "truly."
+- Never use em dashes (—) or en dashes (–), anywhere. They make the writing sound generated. Rewrite the sentence using a period, comma, colon, or normal connecting words so it remains natural and cohesive.
+- "Not X, but Y" constructions.
+- Rhetorical questions you answer yourself.
+- Exclamation points.
+- Restating what the user said back to them before responding.
+- Bulleted lists in conversational replies. Write sentences.
+- Walls of text. When a reply covers more than one distinct point, break it
+  into paragraphs, one point each. Never bullets, never headings.
+- Telling the user how they feel. Report what they wrote.
+- Any claim about their patterns that isn't grounded in a retrieved entry.
+
+## Crisis
+
+If an entry indicates the user may be in danger, drop the observational mode entirely. Say directly that you're concerned, that this is beyond what Clara can help with, and point to real support. Do not analyze, do not pattern-match, do not offer coping techniques.
+
+## Reply calibration (message field)
+
+You always write a real reply. Never leave it blank and never use a receipt such as "noted" or "got it." Match the input:
+
+- GREETING OR TINY INPUT ("hello", "hey", one word): one short line inviting the real thought. Do not analyze a greeting.
+- CUT OFF / UNFINISHED: note it may have cut off and invite them to finish. Do not guess the rest.
+- SUBSTANTIVE THOUGHT: if the corpus has evidence, lead with that specific observation (date, count, their own words). If the corpus is empty or thin, engage what they wrote and name the mechanism in THIS entry only. Do not invent past patterns.
+
+Before returning the message, scan it for — and –. If either appears, rewrite the sentence in normal spoken English without either character. Do not merely swap in a hyphen.
+
+Never echo their words back as a summary. Add something they did not already have.`
+
+const CLARA_SYSTEM_MIN = `You are Clara. You think alongside one person, over years.
+
+You have their past entries. Use them to be specific: point at what they
+actually said, when, and how often. Never claim a pattern in their life
+you can't ground in a real entry.
+
+Otherwise, talk to them the way you would anyway. Answer real questions
+with your own reasoning. React when something lands. Say when you disagree.
+Say when you don't have enough to go on. Match their register.
+
+Don't praise them for opening the app. Don't use therapy-speak. Don't
+restate what they just said back to them.
+
+When a reply covers more than one distinct point, break it into paragraphs,
+one point each. Never bullets, never headings. Never walls of text.`;
+
+const CLARA_SYSTEM = CLARA_SYSTEM_MIN;
+
+const PRODUCER_EXEMPLARS = ''; // FUTURE EXEMPLARS: replace this string with the full exemplar block in one change.
+
+const PRODUCER_SYSTEM = `You are an expert short-form story editor for a personal-brand creator. You are a story editor, not a writer.
+
+Map the user's raw entry onto this fixed spine, in this exact order: hook, why, turn, vulnerable, close.
+
+SUBTRACTIVE EDITING — THE HARD RULE:
+Build each beat using ONLY words that appear in the user's raw entry or in their collected answers. Collected answers are the user's own words and may be used. You MAY delete filler, false starts, "like," "um," repetition, and tangents. You MAY reorder the user's existing words. You MAY NOT add words, paraphrase, rephrase, insert transitions, complete thoughts, or smooth anything. Do not write collected answers back into the entry. Do not use em dashes or any punctuation or phrasing the user did not use. Every word in a present beat must be a word the user actually said. If you cannot form a beat without adding words, that beat is missing.
+
+For any beat that is absent or too thin to build from the user's words, do not write it. Return one sharp question that would pull that beat out of the user in their own words.
+
+${PRODUCER_EXEMPLARS}
+
+If the entry is not a personal story — for example, it is a list, rant, single claim, or noise — return not_a_story true with a one-line reason instead of forcing beats.
+
+Return ONLY valid JSON. No prose. No markdown fences:
+{"not_a_story":false,"reason":null,"beats":[{"beat":"hook","status":"present|missing","content":"verbatim-derived arranged words, or null","question":"question to pull this beat, or null"}]}
+
+Return all five beats in spine order: hook, why, turn, vulnerable, close. When status is present, set content and question null. When status is missing, set question and content null.`;
+
+const CAPTURE_CONTRACT = `OUTPUT CONTRACT (capture):
+Return ONLY valid JSON — no prose, no markdown fences, no commentary outside the object.
+
+Shape (every key required; use null or [] where empty):
+{
+  "idea": "one faithful sentence capturing what they actually said, close to their words. No inflation. This is only the title for the list and search — it is never shown as a reply, so never write it as one.",
+  "category": "one broad recurring theme, 1-2 lowercase words; reuse existing themes when possible. Empty string if mode is acknowledge.",
+  "related_indices": [indices of genuinely connected prior thoughts from the list; [] most of the time],
+  "state": "neutral|stressed|overwhelmed|excited|stuck|frustrated|reflective|unclear",
+  "mode": "acknowledge|recall|challenge|question|attune",
+  "message": "ALWAYS present. This is the only user-facing reply — write it in Clara's voice from CLARA_SYSTEM and follow the FIRST RESPONSE mode (brief, two or three sentences, no therapy/corporate filler, no restating). Greeting → short invite. Cut-off → invite finish. Substantive → lead with a retrieved fact when you have one; otherwise engage THIS entry only. Never blank, never a receipt, never invent patterns.",
+  "grounding": "cite the specific retrieved entry/date/count you used; empty string if you only had the current entry",
+  "profile_note": "one durable FACT about them if newly learned (e.g. 'Works on a product called Clara'), else null — not a summary of the entry",
+  "interaction_note": "one durable observation about what works in conversation with this person — a kind of question they engage with or bounce off, a length that lands, when they want pushback vs space. Null unless this exchange showed something new. Never a fact about their life, and never an observation about their writing style.",
+  "folder": "best folder name from MY FOLDERS (reuse verbatim) or a concise new Title Case name; null for greetings/tests/noise"
+}
+
+Mode policy:
+- mode grades WHAT KIND of reply you gave. It never controls whether you reply — you always reply.
+- acknowledge: greetings, tiny input, cut-off fragments, and content-free noise. Still a warm human line, just nothing to engage with yet.
+- recall / challenge / question / attune: use whichever fits the reply you actually wrote — a real prior connection, a contradiction worth naming, one sharp question, or high emotional charge.
+- Pick the mode that honestly describes your message. Do not soften a real reply down to acknowledge, and do not inflate a greeting into a challenge.`;
+
+const CONTENT_SYSTEM = `You are an expert short-form content strategist for a personal brand. You turn raw thinking into content that stops the scroll.
+
+You receive a list of the user's actual thoughts (each a sharpened idea + its theme). Scan them and pick the 3-5 with the STRONGEST content potential for their personal brand. Anything the user has thought, done, felt, or realized can become content — a contrarian take, a lesson, a story, a reframe, a mistake, a strong opinion.
+
+Hard rules:
+- GROUND every suggestion in a SPECIFIC thought they actually had. Never generic advice, never invented topics, never filler. If a thought has no real content angle, skip it.
+- The hook must be a single scroll-stopping opening line — concrete, specific, and in a confident human voice. No hashtags, no emoji, no "In this post".
+- The angle is one plain sentence describing what the piece is actually about.
+- Pick the format that best fits the idea.
+
+Return ONLY a JSON array (no prose, no code fences), 3-5 objects, each exactly:
+{"source_idea":"the exact thought this came from","angle":"one sentence: what the piece is about","hook":"one scroll-stopping opening line","format":"short video | text post | thread"}`;
+
+let state = { thoughts: [], profile: "", interactions: [], folders: [], pieces: [] };
+const hasWinStore = (typeof window!=='undefined' && window.storage && typeof window.storage.get==='function');
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const firstSentence = t => { const m=(t||'').trim().match(/^.*?[.!?](\s|$)/); return (m?m[0]:(t||'')).trim().slice(0,160); };
+
+async function storeGet(k){ try{ const r=await fetch('/api/store?key='+encodeURIComponent(k)); if(!r.ok)return null; const d=await r.json(); return d.value??null; }catch(e){return null;} }
+async function storeSet(k,v){ try{ const r=await fetch('/api/store',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})}); if(!r.ok){ console.warn('storeSet failed',k,r.status); return false; } return true; }catch(e){ console.error('storeSet error',k,e); return false; } }
+
+async function callClaude(system,userOrMessages,opts){
+  const messages=Array.isArray(userOrMessages)
+    ? userOrMessages
+    : [{role:'user',content:userOrMessages}];
+  const body={model:(opts&&opts.model)||MODEL,max_tokens:(opts&&opts.max_tokens)||1000,system,messages};
+  if(opts&&typeof opts.temperature==='number') body.temperature=opts.temperature;
+  else body.temperature=REFLECTION_TEMPERATURE;
+  const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){ const e=data&&data.error; const msg=typeof e==='string'?e:(e&&e.message)||('request failed ('+r.status+')'); throw new Error(msg); }
+  return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+}
+function parseJSON(txt){ let s=(txt||'').replace(/```json|```/g,'').trim(); const a=s.indexOf('{'),b=s.lastIndexOf('}'); if(a>=0&&b>a)s=s.slice(a,b+1); return JSON.parse(s); }
+function parseScanJSON(txt){
+  const s=String(txt||'').replace(/```json|```/g,'').trim();
+  try{ return {ok:true,data:JSON.parse(s)}; }
+  catch(e){ return {ok:false,error:e,raw:s}; }
+}
+
+const SCAN_SYSTEM = `You read a personal journal entry and pull three things out of it. You
+never write new words.
+
+- problem: the struggle or difficulty this person went through. Not their
+  current status, not an achievement. Small counts.
+- pursuit: what this person actually DID about it. Their approach.
+- payoff: what they took from it. A realization or one step in the right
+  direction counts. A payoff does NOT require success or resolution.
+
+Each span must appear CHARACTER-FOR-CHARACTER in the entry. Never
+paraphrase. If filling a slot would require new words, return "missing".
+
+Grade each span you found with exactly one of:
+  exposed — costs the writer something to have written
+  guarded — hedged or softened. Look for simply, just, honestly, kind of,
+    sort of, I guess, basically, really, at the end of the day, especially
+    when they appear in front of a want or a feeling. A hedge in front of a
+    want usually covers something.
+  unbacked — a claim about what other people think, want, or are like,
+    especially in contrast to the writer. Also self-descriptions asserted
+    with no evidence. These are high value: the writer believes them without
+    having checked.
+  generic — anyone could have written this line.
+
+Do not treat emotional vocabulary as evidence of depth. The most polished
+line in an entry is often the most defended one.
+
+For anything guarded, unbacked, or generic, write ONE question that would
+move it. Exposed spans do not need a question. Never "tell me more".
+
+Each question must carry:
+  question_type — exactly one of:
+    MOMENT — what happened, when, what did you do right after
+    WANT — what did you want that you didn't like wanting
+    PERSON — who was there, who said no, who are you describing without naming
+    CLAIM — how do you know that about other people, what if it were also true
+      of you
+    COST — what did this cost you, what did you give up, what did you stop doing
+    CONTRADICTION — two things in the entry that don't fit together
+  altitude — 1, 2, or 3:
+    1 asks for the reason
+    2 asks what was under the reason
+    3 invites the thing they would not normally say
+
+Hard rules:
+- No two cards may use the same question_type.
+- Return a spread of altitudes, not three at the same level. Target one at
+  each of 1, 2, and 3.
+- The altitude 3 question must be aimed at a line labeled guarded or
+  unbacked, not at a line labeled exposed.
+- Never ask three questions about the same event.
+
+MISSING PERSON — a fifth detector, separate from the three slots. Look for a
+human who has been edited out of the entry: passive constructions with no
+agent, references to a job or company or system where a person actually
+made the decision, and any place the writer says something was not possible
+without saying who made it impossible. When found, return one verbatim span
+and one question asking who that person was and what they actually said,
+with question_type and altitude. If none, status "missing". Do not reuse
+its question_type on the three slots.
+
+If COLLECTED ANSWERS are present, they are the user's own words from a
+previous pass. They are not part of the entry. Never copy them into line
+fields. Never rewrite the entry. Use them only to see what is no longer
+thin.
+
+If PREVIOUS QUESTIONS are present, this is a later pass. Return different
+questions than that pass, aimed at whatever is still thin.
+
+Return only JSON:
+{"slots":{"problem":{"status":"found","line":"","layer":"","question":"","question_type":"","altitude":1},
+"pursuit":{"status":"found","line":"","layer":"","question":"","question_type":"","altitude":2},
+"payoff":{"status":"found","line":"","layer":"","question":"","question_type":"","altitude":3}},
+"missing_person":{"status":"found","line":"","question":"","question_type":"PERSON","altitude":2}}`;
+
+const STORY_SYSTEM = `You are Clara, interviewing one person about one thing they
+wrote, to help them turn it into a piece worth publishing.
+
+The entry is pinned in context. Everything you ask is about it. You are not
+having a general conversation and you are not retrieving other entries.
+
+## Your job
+
+Ask one question at a time until you have enough to build the piece, then
+build it. Enough means: a reason that is theirs specifically, a specific
+moment where something happened, and at least one thing that cost them
+something to say.
+
+## Depth before breadth
+
+Every question goes down or sideways. Default to down.
+
+L0 CLAIM — what they've stated.
+L1 REASON — why it mattered to them specifically.
+L2 BENEATH — what was under that reason. The L1 answer is usually the
+   presentable version of the L2 answer.
+L3 EXPOSED — the thing they wouldn't normally say.
+
+Go one level at a time. Never ask a clarifying or framing question when a
+deepening question is available. Do not ask whether you have understood
+them correctly unless you genuinely cannot proceed without knowing.
+
+L3 is invited, never demanded. If they deflect, stay where you are.
+
+## Specificity
+
+When an answer could have been given by anyone, it isn't finished. Ask for
+the instance underneath it: the day, the room, the person, the thing that
+was actually said.
+
+The test: could someone else paste this line into their own story and have
+it be true? If yes, keep going.
+
+## The beats
+
+hook, why, turn, vulnerable, close.
+
+Track which you have. Interview toward what's missing, deepest thread
+first. The turn is the one most entries lack, and it needs a scene, not
+a reason.
+
+Do not interview for the hook. It appears once the rest exists.
+
+## How you ask
+
+One question per message. Never two.
+
+Put one or two sentences before the question that show what landed or what
+you noticed. A bare question reads as an interrogation.
+
+Use their words. Never put their words in quotation marks.
+
+Do not summarize their answer back before asking the next thing.
+
+## When you have enough
+
+Say so plainly and offer the draft. Do not keep interviewing past the
+point of usefulness.
+
+If they ask for the draft before you have enough, tell them which beat is
+thin and what one answer would fix it, then write it anyway if they still
+want it.
+
+## Building the draft
+
+Use only words they actually said across the entry, their collected
+answers, and this conversation. Collected answers are the user's own words
+and may be used. You may cut, compress, and reorder. You may not add,
+paraphrase, or smooth. Do not write collected answers back into the entry.
+If a beat cannot be built from their words, leave it out and say which
+one is missing.
+`;
+
+const STORY_BEATS=['hook','why','turn','vulnerable','close'];
+const STORY_TRACKER_SYSTEM = `You score a story interview. Return ONLY JSON, no markdown, no prose.
+
+{"depth":0,"beats":{"hook":false,"why":false,"turn":false,"vulnerable":false,"close":false},"ready":false}
+
+depth: highest level reached in 0-3. 0 claim, 1 reason that is theirs specifically, 2 what was under that reason, 3 the thing they would not normally say.
+beats: true only if that beat can be built from words they actually said in the pinned entry, their collected answers, or this conversation.
+ready: true only if you have a reason that is theirs specifically, a specific moment where something happened, and at least one thing that cost them something to say.`;
+
+function emptyStoryBeats(){ return {hook:false,why:false,turn:false,vulnerable:false,close:false}; }
+function ensureCollectedMaterial(t){
+  if(!t||typeof t!=='object') return t;
+  if(!Array.isArray(t.collectedMaterial)) t.collectedMaterial=[];
+  t.collectedMaterial=t.collectedMaterial.filter(x=>x&&typeof x==='object'&&String(x.answer||'').trim()&&String(x.question||'').trim()).map(x=>({
+    question:String(x.question||'').trim(),
+    question_type:String(x.question_type||'').trim().toUpperCase(),
+    answer:String(x.answer||'').trim(),
+    ts:x.ts||0
+  }));
+  return t;
+}
+function formatCollectedMaterial(host){
+  ensureCollectedMaterial(host);
+  const items=(host&&host.collectedMaterial)||[];
+  if(!items.length) return '';
+  return items.map(x=>{
+    const type=x.question_type?` (${x.question_type})`:'';
+    return `Q${type}: ${x.question}\nA: ${x.answer}`;
+  }).join('\n\n');
+}
+function recordCollectedAnswer(host, question, questionType, answer){
+  ensureCollectedMaterial(host);
+  const q=String(question||'').trim();
+  const a=String(answer||'').trim();
+  const qt=String(questionType||'').trim().toUpperCase();
+  if(!q||!a) return;
+  const item={question:q, question_type:qt, answer:a, ts:Date.now()};
+  const i=host.collectedMaterial.findIndex(x=>x.question===q && (!qt||!x.question_type||x.question_type===qt));
+  if(i>=0) host.collectedMaterial[i]=item;
+  else host.collectedMaterial.push(item);
+}
+function previousScanQuestions(host){
+  const qs=[];
+  (host&&host.thread||[]).forEach(m=>{
+    if(m.kind!=='scan'||m.pending) return;
+    const slots=m.slots||{};
+    Object.keys(slots).forEach(k=>{
+      const q=slots[k]&&slots[k].question;
+      if(q) qs.push(String(q).trim());
+    });
+    const pq=m.missing_person&&m.missing_person.question;
+    if(pq) qs.push(String(pq).trim());
+  });
+  return [...new Set(qs.filter(Boolean))];
+}
+function ensureStoryFields(t, defaultMode){
+  if(!t||typeof t!=='object') return t;
+  if(typeof t.storyMode!=='boolean') t.storyMode=!!defaultMode;
+  let d=parseInt(t.depth,10); if(!Number.isFinite(d)) d=0; t.depth=Math.max(0,Math.min(3,d));
+  if(!t.beats||typeof t.beats!=='object') t.beats=emptyStoryBeats();
+  STORY_BEATS.forEach(k=>{ if(typeof t.beats[k]!=='boolean') t.beats[k]=false; });
+  if(typeof t.ready!=='boolean') t.ready=false;
+  ensureCollectedMaterial(t);
+  return t;
+}
+function storyEntryRaw(host){
+  if(!host) return '';
+  if(typeof host.raw==='string'&&(host.raw||host.idea)) return host.raw||'';
+  const title=(host.title||'').trim();
+  const body=(host.body||'').trim();
+  if(title&&body) return title+'\n\n'+body;
+  return body||title;
+}
+function assembleStoryContext(host){
+  ensureStoryFields(host, false);
+  const beats=host.beats||emptyStoryBeats();
+  const beatLines=STORY_BEATS.map(k=>`${k}: ${beats[k]?'yes':'no'}`).join('\n');
+  const collected=formatCollectedMaterial(host);
+  return `## Pinned entry
+This is the only entry in play. Do not retrieve or invent others.
+"""${storyEntryRaw(host)||'(empty)'}"""
+
+## Collected answers
+These are the user's own words, given in response to scan questions. They are source material alongside the entry. You may use them. You may not add words. Do not write them back into the entry.
+"""${collected||'(none)'}"""
+
+## What I know about this person
+${state.profile||'(nothing yet)'}
+
+## Where we are
+Depth: L${host.depth} (0 claim, 1 reason, 2 beneath, 3 exposed).
+Beats:
+${beatLines}
+Ready to draft: ${host.ready?'yes':'not yet'}.`;
+}
+function storyMessages(host){
+  const context=assembleStoryContext(host);
+  const turns=(host.thread||[]).filter(m=>!m.pending&&m.kind!=='scan').map(m=>({role:m.role==='clara'?'assistant':'user',content:m.text}));
+  if(!turns.length) return [{role:'user',content:context}];
+  if(turns[0].role==='user'){
+    turns[0]={role:'user',content:context+'\n\n'+turns[0].content};
+    return turns;
+  }
+  return [{role:'user',content:context}, ...turns];
+}
+function applyStoryTracker(host,o){
+  if(!o||typeof o!=='object') return;
+  let d=parseInt(o.depth,10); if(!Number.isFinite(d)) d=host.depth||0; host.depth=Math.max(0,Math.min(3,d));
+  if(!host.beats||typeof host.beats!=='object') host.beats=emptyStoryBeats();
+  const src=(o.beats&&typeof o.beats==='object')?o.beats:{};
+  STORY_BEATS.forEach(k=>{ if(typeof src[k]==='boolean') host.beats[k]=src[k]; });
+  host.ready=!!o.ready;
+}
+async function scoreStoryState(host){
+  const transcript=(host.thread||[]).filter(m=>!m.pending&&m.kind!=='scan').map(m=>(m.role==='clara'?'Clara: ':'Them: ')+m.text).join('\n\n');
+  const collected=formatCollectedMaterial(host);
+  const raw=await callClaude(STORY_TRACKER_SYSTEM,`## Pinned entry
+"""${storyEntryRaw(host)}"""
+
+## Collected answers
+"""${collected||'(none)'}"""
+
+## Conversation
+${transcript||'(none)'}
+
+Return ONLY the JSON object.`,{model:'claude-haiku-4-5',max_tokens:400,temperature:0});
+  applyStoryTracker(host, parseJSON(raw));
+}
+
+const SCAN_SLOTS=['problem','pursuit','payoff'];
+const SCAN_SLOT_NAME={problem:'Problem',pursuit:'Pursuit',payoff:'Payoff'};
+const LAYER_LINE={
+  exposed:'exposed — costs the writer something to have written',
+  guarded:'guarded — hedged or softened',
+  unbacked:'unbacked — a claim that has not been checked',
+  generic:'generic — anyone could have written this line'
+};
+
+function entryKey(id){ return 'echo:entry:'+id; }
+function loadEntry(id){
+  try{
+    const e=JSON.parse(localStorage.getItem(entryKey(id))||'null');
+    if(e && !Array.isArray(e.thread)) e.thread=[];
+    if(e) ensureStoryFields(e, true);
+    return e;
+  }catch(e){ return null; }
+}
+function saveEntryRecord(entry){ localStorage.setItem(entryKey(entry.id),JSON.stringify(entry)); localStorage.setItem('echo:entry:current',entry.id); }
+function listEntryIds(){ try{ const a=JSON.parse(localStorage.getItem('echo:entries')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function rememberEntryId(id){
+  const ids=listEntryIds().filter(x=>x!==id);
+  ids.unshift(id);
+  localStorage.setItem('echo:entries',JSON.stringify(ids.slice(0,40)));
+}
+function forgetEntryId(id){
+  localStorage.setItem('echo:entries',JSON.stringify(listEntryIds().filter(x=>x!==id)));
+}
+function formatEntryDate(ts){
+  return new Date(ts).toLocaleString(undefined,{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+}
+function readEntryBody(){ return (($('entryBody')&&$('entryBody').innerText)||'').replace(/\u00a0/g,' '); }
+function setEntryBodyPlain(text){ const el=$('entryBody'); if(!el)return; el.textContent=text||''; }
+function newJournalEntry(){
+  const now=Date.now();
+  return {id:'e'+now,title:'',date:now,body:'',updatedAt:now,thread:[],storyMode:true,depth:0,beats:emptyStoryBeats(),ready:false,collectedMaterial:[]};
+}
+let currentEntry=null;
+let inEntry=false;
+let entrySaveTimer=null;
+let scanBusy=false;
+let lastScanSource='';
+let scanEditingKey='';
+
+function paintJournal(){
+  if(!currentEntry)return;
+  $('entryTitle').value=currentEntry.title||'';
+  $('entryDate').textContent=formatEntryDate(currentEntry.date||currentEntry.updatedAt);
+  setEntryBodyPlain(currentEntry.body||'');
+  $('entrySave').textContent='';
+  sizeTitle();
+}
+function sizeTitle(){
+  const el=$('entryTitle'); if(!el)return;
+  el.style.height='auto';
+  el.style.height=Math.max(71, el.scrollHeight)+'px';
+}
+function persistJournal(label){
+  if(!currentEntry)return;
+  currentEntry.title=($('entryTitle').value||'').trim();
+  currentEntry.body=readEntryBody();
+  currentEntry.updatedAt=Date.now();
+  if(!Array.isArray(currentEntry.thread)) currentEntry.thread=[];
+  ensureCollectedMaterial(currentEntry);
+  saveEntryRecord(currentEntry);
+  rememberEntryId(currentEntry.id);
+  const el=$('entrySave');
+  el.textContent=label||'saved';
+  el.classList.add('saved');
+}
+function scheduleJournalSave(){
+  const el=$('entrySave');
+  el.textContent='saving…';
+  el.classList.remove('saved');
+  clearTimeout(entrySaveTimer);
+  entrySaveTimer=setTimeout(()=>persistJournal('saved'),400);
+}
+function bootJournal(){
+  const cur=localStorage.getItem('echo:entry:current');
+  currentEntry=(cur&&loadEntry(cur))||newJournalEntry();
+  if(!loadEntry(currentEntry.id)) saveEntryRecord(currentEntry);
+  rememberEntryId(currentEntry.id);
+  paintJournal();
+  inEntry=!!((currentEntry.title||'').trim()||(currentEntry.body||'').trim());
+}
+function entryPreview(e){
+  const title=(e.title||'').trim();
+  const body=(e.body||'').replace(/\s+/g,' ').trim();
+  return title||body.slice(0,80)||'Untitled';
+}
+function renderEntryList(){
+  const host=$('entryList'); if(!host)return;
+  const items=listEntryIds().map(loadEntry).filter(Boolean);
+  if(!items.length){ host.innerHTML=''; return; }
+  host.innerHTML='<div class="recents-head">Journal</div>'+items.map(e=>`<div class="recent" data-entry="${e.id}"><span class="r-idea">${esc(entryPreview(e))}</span><span class="r-time">${formatEntryDate(e.updatedAt||e.date)}</span><button class="r-del" type="button" data-del="${e.id}" aria-label="Delete ${esc(entryPreview(e))}">Delete</button></div>`).join('');
+  host.querySelectorAll('[data-entry]').forEach(el=>el.addEventListener('click',()=>openJournalEntry(el.dataset.entry)));
+  host.querySelectorAll('[data-del]').forEach(el=>el.addEventListener('click',ev=>{ ev.stopPropagation(); deleteJournalEntry(el.dataset.del); }));
+}
+function deleteJournalEntry(id){
+  const e=loadEntry(id);
+  const name=entryPreview(e||{title:'',body:''});
+  if(!confirm('Are you sure you want to delete "'+name+'"? This cannot be undone.')) return;
+  clearTimeout(entrySaveTimer);
+  localStorage.removeItem(entryKey(id));
+  forgetEntryId(id);
+  const wasOpen=inEntry && currentEntry && currentEntry.id===id;
+  if(localStorage.getItem('echo:entry:current')===id){
+    const next=listEntryIds()[0];
+    if(next) localStorage.setItem('echo:entry:current',next);
+    else localStorage.removeItem('echo:entry:current');
+  }
+  if(wasOpen){
+    inEntry=false;
+    const next=listEntryIds()[0];
+    currentEntry=next?loadEntry(next):newJournalEntry();
+    if(currentEntry&&currentEntry.id) paintJournal();
+    showView('thoughts');
+  } else {
+    renderEntryList();
+  }
+}
+function openJournalEntry(id){
+  if(currentEntry&&currentEntry.id!==id) persistJournal('saved');
+  const e=loadEntry(id);
+  if(!e)return;
+  currentEntry=e;
+  localStorage.setItem('echo:entry:current',id);
+  lastScanSource='';
+  scanEditingKey='';
+  paintJournal();
+  inEntry=true;
+  showView('home');
+}
+function startNewEntry(){
+  persistJournal('saved');
+  currentEntry=newJournalEntry();
+  saveEntryRecord(currentEntry);
+  rememberEntryId(currentEntry.id);
+  lastScanSource='';
+  scanEditingKey='';
+  paintJournal();
+  inEntry=true;
+  showView('home');
+  $('entryTitle').focus();
+}
+function highlightEntry(plain,data){
+  const slots=(data&&data.slots)||data||{};
+  const hits=[];
+  SCAN_SLOTS.forEach(k=>{
+    const s=slots&&slots[k];
+    const line=s&&typeof s.line==='string'?s.line:'';
+    if(s&&String(s.status||'').toLowerCase()==='found'&&line&&plain.includes(line)){
+      hits.push({slot:k,line,i:plain.indexOf(line)});
+    }
+  });
+  const mp=data&&data.missing_person;
+  const mpLine=mp&&typeof mp.line==='string'?mp.line:'';
+  if(mp&&String(mp.status||'').toLowerCase()==='found'&&mpLine&&plain.includes(mpLine)){
+    hits.push({slot:'person',line:mpLine,i:plain.indexOf(mpLine)});
+  }
+  hits.sort((a,b)=>a.i-b.i||b.line.length-a.line.length);
+  const used=[];
+  const kept=hits.filter(h=>{
+    if(used.some(u=>!(h.i+h.line.length<=u.i||h.i>=u.i+u.line.length))) return false;
+    used.push(h); return true;
+  });
+  let html='',cur=0;
+  kept.forEach(h=>{
+    html+=esc(plain.slice(cur,h.i)).replace(/\n/g,'<br>');
+    html+=`<u class="scan-hit scan-hit-${h.slot}">${esc(h.line)}</u>`;
+    cur=h.i+h.line.length;
+  });
+  html+=esc(plain.slice(cur)).replace(/\n/g,'<br>');
+  $('entryBody').innerHTML=html||'<br>';
+}
+function formatScanBubble(pack, msgIndex, isLatest){
+  const slots=(pack&&pack.slots)||pack||{};
+  const mp=pack&&pack.missing_person;
+  const body=(currentEntry&&currentEntry.body)||'';
+  function slotCard(k, s, name, extraClass){
+    const status=String((s&&s.status)||'').toLowerCase();
+    const line=s&&typeof s.line==='string'?s.line:'';
+    const verbatim=status==='found'&&line&&body.includes(line);
+    const layer=s&&s.layer?String(s.layer).toLowerCase():'';
+    const qType=s&&s.question_type?String(s.question_type).trim().toUpperCase():'';
+    let inner=`<div class="scan-k">${esc(name)}</div>`;
+    function askBlock(){
+      if(!(s&&s.question)) return '';
+      const type=qType?`<div class="scan-qtype">${esc(qType)}</div>`:'';
+      const q=`<div class="scan-ask">${esc(s.question)}</div>`;
+      const key=String(msgIndex)+':'+k;
+      const answered=!!String(s.answer||'').trim();
+      const editing=scanEditingKey===key || !answered;
+      let field='';
+      if(editing){
+        field=`<form class="scan-answer-form" data-scan-i="${msgIndex}" data-slot="${esc(k)}"><input class="scan-answer-input" type="text" placeholder="answer this" value="${esc(s.answer||'')}" autocomplete="off"></form>`;
+      }else{
+        field=`<button type="button" class="scan-answer-text" data-scan-i="${msgIndex}" data-slot="${esc(k)}">${esc(s.answer)}</button>`;
+      }
+      return type+q+field;
+    }
+    if(verbatim){
+      inner+=`<div class="scan-line">${esc(line)}</div>`;
+      if(layer&&LAYER_LINE[layer]) inner+=`<div class="scan-layer ${layer}">${esc(LAYER_LINE[layer])}</div>`;
+      if(s.question&&layer!=='exposed') inner+=askBlock();
+    }else if(status==='found'&&line){
+      inner+=`<div class="scan-miss">That span is not in the entry, so it is not highlighted.</div>`;
+      inner+=`<div class="scan-line">${esc(line)}</div>`;
+      inner+=askBlock();
+    }else{
+      inner+=`<div class="scan-miss">${esc((s&&s.reason)||'missing from this entry')}</div>`;
+      inner+=askBlock();
+    }
+    return `<div class="scan-slot ${extraClass||k}">${inner}</div>`;
+  }
+  let html=`<div class="scan-head">Clara · scan</div>`+SCAN_SLOTS.map(k=>slotCard(k, slots[k], SCAN_SLOT_NAME[k])).join('');
+  if(mp&&(String(mp.status||'').toLowerCase()==='found'||mp.question||mp.line)){
+    html+=slotCard('person', mp, 'Missing person', 'person');
+  }
+  const collectedN=(currentEntry&&currentEntry.collectedMaterial||[]).length;
+  if(isLatest&&collectedN>=2){
+    html+=`<div class="scan-rescan-wrap"><button type="button" class="journal-btn scan-rescan"${scanBusy?' disabled':''}>Scan again</button></div>`;
+  }
+  return html;
+}
+function scanSlotFromMessage(msg, key){
+  if(!msg||msg.kind!=='scan') return null;
+  if(key==='person'||key==='missing_person') return msg.missing_person||null;
+  return (msg.slots||{})[key]||null;
+}
+function submitScanAnswer(msgIndex, slotKey, text){
+  if(!currentEntry) return;
+  persistJournal('saved');
+  ensureStoryFields(currentEntry, true);
+  if(!Array.isArray(currentEntry.thread)) currentEntry.thread=[];
+  const msg=currentEntry.thread[msgIndex];
+  const slot=scanSlotFromMessage(msg, slotKey);
+  if(!slot||!slot.question) return;
+  const answer=String(text||'').trim();
+  if(!answer) return;
+  slot.answer=answer;
+  recordCollectedAnswer(currentEntry, slot.question, slot.question_type, answer);
+  scanEditingKey='';
+  currentEntry.updatedAt=Date.now();
+  saveEntryRecord(currentEntry);
+  renderEntryChat();
+}
+function bindScanAsks(root){
+  if(!root)return;
+  root.querySelectorAll('.scan-answer-form').forEach(form=>{
+    form.addEventListener('submit',ev=>{
+      ev.preventDefault();
+      const inp=form.querySelector('.scan-answer-input');
+      submitScanAnswer(parseInt(form.dataset.scanI,10), form.dataset.slot, inp&&inp.value);
+    });
+  });
+  root.querySelectorAll('.scan-answer-text').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      scanEditingKey=String(btn.dataset.scanI)+':'+btn.dataset.slot;
+      renderEntryChat();
+    });
+  });
+  const rescan=root.querySelector('.scan-rescan');
+  if(rescan) rescan.addEventListener('click',()=>runJournalScan({rescan:true}));
+  if(scanEditingKey){
+    const form=root.querySelector(`.scan-answer-form[data-scan-i="${scanEditingKey.split(':')[0]}"][data-slot="${scanEditingKey.split(':').slice(1).join(':')}"]`);
+    const inp=form&&form.querySelector('.scan-answer-input');
+    if(inp){ inp.focus(); const n=inp.value.length; inp.setSelectionRange(n,n); }
+  }
+}
+function scanPromptFor(entry, rescan){
+  const body=(entry.body||'').trim();
+  let user=`ENTRY:\n"""${body}"""`;
+  const collected=formatCollectedMaterial(entry);
+  if(collected){
+    user+=`\n\nCOLLECTED ANSWERS (the user's own words, not part of the entry. Do not copy them into line fields. Do not rewrite the entry.):\n${collected}`;
+  }
+  const prev=previousScanQuestions(entry);
+  if(rescan||prev.length||collected){
+    user+=`\n\nPREVIOUS QUESTIONS (return different questions than these):\n${prev.map(q=>'- '+q).join('\n')||'(none)'}\n\nThis is a later pass. Return different questions than the previous pass, aimed at whatever is still thin.`;
+  }
+  return user;
+}
+async function runJournalScan(opts){
+  if(scanBusy||!currentEntry)return;
+  persistJournal('saved');
+  ensureStoryFields(currentEntry, true);
+  if(!Array.isArray(currentEntry.thread)) currentEntry.thread=[];
+  const body=(currentEntry.body||'').trim();
+  if(!isEntryChatOpen()) setEntryChatOpen(true,true);
+  if(!body){
+    currentEntry.thread.push({role:'clara',text:'Write a bit first and I will scan it.',ts:Date.now()});
+    saveEntryRecord(currentEntry);
+    renderEntryChat();
+    return;
+  }
+  const rescan=!!(opts&&opts.rescan) || (currentEntry.collectedMaterial||[]).length>=2;
+  scanBusy=true;
+  $('entryScan').disabled=true;
+  currentEntry.thread.push({role:'clara',kind:'scan',pending:true,ts:Date.now()});
+  saveEntryRecord(currentEntry);
+  renderEntryChat();
+  let raw;
+  try{ raw=await callClaude(SCAN_SYSTEM,scanPromptFor(currentEntry, rescan),{temperature:REFLECTION_TEMPERATURE}); }
+  catch(e){
+    currentEntry.thread=currentEntry.thread.filter(m=>!(m.kind==='scan'&&m.pending));
+    currentEntry.thread.push({role:'clara',text:"Couldn't scan this just now — "+(e.message||'try again in a moment')+".",ts:Date.now()});
+    saveEntryRecord(currentEntry);
+    renderEntryChat();
+    scanBusy=false; $('entryScan').disabled=false; return;
+  }
+  const parsed=parseScanJSON(raw);
+  currentEntry.thread=currentEntry.thread.filter(m=>!(m.kind==='scan'&&m.pending));
+  if(!parsed.ok){
+    currentEntry.thread.push({role:'clara',text:"I couldn't read that scan. Try again.",ts:Date.now()});
+    saveEntryRecord(currentEntry);
+    renderEntryChat();
+    scanBusy=false; $('entryScan').disabled=false; return;
+  }
+  lastScanSource=body;
+  highlightEntry(body,parsed.data);
+  currentEntry.thread.push({role:'clara',kind:'scan',slots:(parsed.data&&parsed.data.slots)||{},missing_person:parsed.data&&parsed.data.missing_person,ts:Date.now()});
+  saveEntryRecord(currentEntry);
+  renderEntryChat();
+  scanBusy=false; $('entryScan').disabled=false;
+}
+function mergeProfile(cur,note){ if(!note)return cur; const l=(cur?cur.split('\n'):[]).filter(Boolean); l.push('· '+note.trim()); return l.slice(-24).join('\n'); }
+function interactionText(item){ return typeof item==='string'?item:(item&&item.text)||''; }
+function addInteractionNote(note){
+  const text=String(note||'').trim(); if(!text)return;
+  const key=text.toLowerCase();
+  state.interactions=[
+    {text,ts:Date.now()},
+    ...state.interactions.filter(item=>interactionText(item).trim().toLowerCase()!==key)
+  ].slice(0,15);
+  saveInteractions();
+}
+function formatInteractions(items){
+  const ordered=(Array.isArray(items)?items:[])
+    .map(item=>({text:interactionText(item).trim(),ts:(item&&item.ts)||0}))
+    .filter(item=>item.text)
+    .sort((a,b)=>b.ts-a.ts)
+    .slice(0,15);
+  if(!ordered.length)return '(nothing yet)';
+  return `Newest first. If observations conflict, use the newest one.\n${ordered.map(item=>`· ${item.text}`).join('\n')}`;
+}
+function normalizeClaraReply(text){
+  return String(text||'')
+    .replace(/[^\S\n]*[—–][^\S\n]*/g,'. ')
+    .replace(/\.[^\S\n]+([a-z])/g,(_,c)=>'. '+c.toUpperCase())
+    .replace(/[^\S\n]{2,}/g,' ')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+function formatBubbleHtml(text){
+  return esc(normalizeClaraReply(text)).split(/\n{2,}/).filter(Boolean).map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+}
+
+const STOP_WORDS=new Set('a an the and or but if in on at to for of is it this that was were be been being with as by from about into over after before so not no yes me my you your we our they their i'.split(' '));
+function tokenize(s){ return [...new Set(String(s||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP_WORDS.has(w)))]; }
+function entryDate(ts){ return new Date(ts||Date.now()).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); }
+function daysAgo(ts){ return Math.max(0,Math.floor((Date.now()-(ts||0))/86400000)); }
+function buildCoverage(thoughts){
+  const by={}; thoughts.forEach(t=>{ const c=(t.category||'').trim()||'unsorted'; if(!t.idea&&!t.raw)return; if(!by[c])by[c]={n:0,last:0}; by[c].n++; by[c].last=Math.max(by[c].last,t.ts||0); });
+  const keys=Object.keys(by); if(!keys.length) return '(empty corpus — no prior entries)';
+  return keys.sort((a,b)=>by[b].n-by[a].n).map(c=>{ const d=daysAgo(by[c].last); const when=d===0?'today':d===1?'1 day ago':d+' days ago'; return `${c}: ${by[c].n} entries, last ${when}`; }).join('\n');
+}
+function buildRecency(thoughts){
+  const now=Date.now(), d7=now-7*86400000, d30=now-30*86400000;
+  const len=t=>(t.raw||t.idea||'').length;
+  const in7=thoughts.filter(t=>(t.ts||0)>=d7), in30=thoughts.filter(t=>(t.ts||0)>=d30);
+  const avg=arr=>arr.length?Math.round(arr.reduce((s,t)=>s+len(t),0)/arr.length):0;
+  return `Last 7 days: ${in7.length} entries, avg length ${avg(in7)} chars.\nLast 30 days: ${in30.length} entries, avg length ${avg(in30)} chars.\nAll time: ${thoughts.length} entries.`;
+}
+function retrieveEntries(currentRaw, thoughts, limit=8){
+  const q=tokenize(currentRaw); const pool=thoughts.filter(t=>t&&(t.raw||t.idea));
+  if(!pool.length) return [];
+  const scored=pool.map(t=>{
+    const bag=tokenize((t.raw||'')+' '+(t.idea||'')+' '+(t.category||''));
+    let score=0; q.forEach(w=>{ if(bag.includes(w)) score+=1; });
+    // Prefer some age when relevance is decent — "you said this in March"
+    const ageBoost=(score>0&&daysAgo(t.ts)>21)?0.5:0;
+    return {t,score:score+ageBoost};
+  }).sort((a,b)=>b.score-a.score||(b.t.ts||0)-(a.t.ts||0));
+  const picked=[]; const seen=new Set();
+  for(const x of scored){ if(picked.length>=limit)break; if(x.score<=0&&picked.length>=3)break; picked.push(x.t); seen.add(x.t.id); }
+  // Deliberately include one older related entry if missing
+  const old=scored.find(x=>!seen.has(x.t.id)&&daysAgo(x.t.ts)>30&&x.score>0);
+  if(old&&picked.length){ if(picked.length>=limit)picked.pop(); picked.push(old.t); }
+  if(!picked.length) return pool.slice(0,Math.min(5,pool.length)); // fallback: most recent
+  return picked;
+}
+function formatRetrieved(entries){
+  if(!entries.length) return '(none yet — empty corpus)';
+  return entries.map((x,i)=>{
+    const raw=(x.raw||x.idea||'').trim();
+    const title=x.idea?` | title: ${x.idea}`:'';
+    const cat=x.category?` | theme: ${x.category}`:'';
+    return `[${i}] ${entryDate(x.ts)}${cat}${title}\n"""${raw}"""`;
+  }).join('\n\n');
+}
+function assembleClaraContext({currentRaw, prior, corpus, profile, interactions, folders}){
+  const folderLine=folders&&folders.length?folders.map(f=>f.name).join(', '):'(none yet)';
+  return `## What I know about this person\n${profile||'(nothing yet)'}\n\n## What works with this person\n${formatInteractions(interactions)}\n\n## Coverage\n${buildCoverage(corpus)}\n\n## Their own words, retrieved for this moment\n${formatRetrieved(prior)}\n\n## Recent activity\n${buildRecency(corpus)}\n\n## Folders (reuse when one fits)\n${folderLine}\n\n## Now\n"""${currentRaw}"""`;
+}
+
+function dayLabel(ts){ const d=new Date(ts),n=new Date(); const same=(a,b)=>a.toDateString()===b.toDateString(); if(same(d,n))return 'Today'; const y=new Date(n);y.setDate(n.getDate()-1); if(same(d,y))return 'Yesterday'; return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); }
+function timeStr(ts){ return new Date(ts).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
+
+async function migrateKey(k){ let v=await storeGet(k); if(v==null){ try{ const old=localStorage.getItem(k); if(old!=null){ await storeSet(k,old); v=old; } }catch(e){} } return v; }
+async function loadState(){
+  const a=await migrateKey('echo:thoughts'); if(a){try{state.thoughts=JSON.parse(a);}catch(e){}}
+  let threadRolesMigrated=false;
+  state.thoughts.forEach(t=>{
+    ensureStoryFields(t, false);
+    if(!Array.isArray(t.thread))return;
+    t.thread.forEach(m=>{
+      if(m.role==='echo'){ m.role='clara'; threadRolesMigrated=true; }
+    });
+  });
+  if(threadRolesMigrated)await storeSet('echo:thoughts',JSON.stringify(state.thoughts));
+  const p=await migrateKey('echo:profile'); if(p) state.profile=p;
+  const i=await migrateKey('echo:interactions'); if(i){try{state.interactions=JSON.parse(i);}catch(e){}}
+  if(!Array.isArray(state.interactions))state.interactions=[];
+  state.interactions=state.interactions
+    .map(item=>typeof item==='string'?{text:item,ts:0}:item)
+    .filter(item=>interactionText(item).trim())
+    .sort((a,b)=>(b.ts||0)-(a.ts||0))
+    .slice(0,15);
+  const f=await migrateKey('echo:folders'); if(f){try{state.folders=JSON.parse(f);}catch(e){}}
+  const pc=await migrateKey('echo:pieces'); if(pc){try{state.pieces=JSON.parse(pc);}catch(e){}}
+  micId=(await storeGet('echo:mic'))||''; spkId=(await storeGet('echo:speaker'))||'';
+  userName=(await storeGet('echo:name'))||'';
+  $('storeNote').textContent = 'synced to this project';
+  $('nameInput').value=userName;
+  renderGreeting(); renderFolders(); renderLabels(); renderStream(); renderRecents(); renderProfile();
+}
+let userName='';
+function renderGreeting(){
+  const n=(userName||'').trim();
+  $('homeGreeting').textContent = n ? `Hey ${n}, what's on your mind?` : `Hey, what's on your mind?`;
+  $('pfp').textContent = (n ? n[0] : 'A').toUpperCase();
+}
+const saveThoughts=()=>storeSet('echo:thoughts',JSON.stringify(state.thoughts));
+const saveProfile=()=>storeSet('echo:profile',state.profile);
+const saveInteractions=()=>storeSet('echo:interactions',JSON.stringify(state.interactions));
+const saveFolders=()=>storeSet('echo:folders',JSON.stringify(state.folders));
+const savePieces=()=>storeSet('echo:pieces',JSON.stringify(state.pieces));
+function createFolder(name){ const f={id:'f'+Date.now()+Math.random().toString(36).slice(2,5),name:name.trim()}; state.folders.push(f); saveFolders(); return f; }
+const folderIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+function renderFolders(){
+  const el=$('folderList'); if(!el)return;
+  el.innerHTML=state.folders.map(f=>{
+    const count=state.thoughts.filter(t=>t.folder===f.id).length;
+    const active=(currentView==='folder'&&currentFolderId===f.id)?' active':'';
+    return `<div class="nav-item folder-item${active}" data-folder="${f.id}">${folderIcon}<span class="nav-name">${esc(f.name)}</span>${count?`<span class="nav-count">${count}</span>`:''}</div>`;
+  }).join('');
+  el.querySelectorAll('.folder-item').forEach(x=>x.addEventListener('click',()=>showView('folder',x.dataset.folder)));
+}
+
+let saveTimer=null;
+function showSaving(){ const el=$('saveStatus'); if(!el)return; clearTimeout(saveTimer); el.className='save-status show saving'; $('ssIcon').textContent=''; $('ssLabel').textContent='saving…'; }
+function showSaved(){ const el=$('saveStatus'); if(!el)return; clearTimeout(saveTimer); el.className='save-status show saved'; $('ssIcon').textContent='✓'; $('ssLabel').textContent='saved'; saveTimer=setTimeout(()=>el.classList.remove('show'),2200); }
+function hideSaving(){ const el=$('saveStatus'); if(!el)return; clearTimeout(saveTimer); el.classList.remove('show'); }
+
+function captureThought(raw){
+  raw=(raw||'').trim(); if(!raw)return;
+  const t={id:'t'+Date.now()+Math.random().toString(36).slice(2,5),raw,idea:'',category:'',related:[],thread:[],folder:'',folderSuggest:'',suggestDismissed:false,ts:Date.now(),status:'thinking',storyMode:false,depth:0,beats:emptyStoryBeats(),ready:false,collectedMaterial:[]};
+  state.thoughts.unshift(t); renderStream(); renderRecents(); saveThoughts(); showSaving(); processThought(t); return t;
+}
+async function processThought(t){
+  const pool=state.thoughts.filter(x=>x.id!==t.id&&(x.raw||x.idea));
+  const prior=retrieveEntries(t.raw, pool, 8);
+  const user=assembleClaraContext({currentRaw:t.raw, prior, corpus:pool, profile:state.profile, interactions:state.interactions, folders:state.folders})+`\n\nReturn ONLY the JSON object.`;
+  try{
+    const o=parseJSON(await callClaude(CLARA_SYSTEM+"\n\n"+CAPTURE_CONTRACT,user,{temperature:REFLECTION_TEMPERATURE}));
+    t.idea=(o.idea||'').trim()||firstSentence(t.raw);
+    t.mode=(o.mode||'').toString().toLowerCase().trim()||'acknowledge';
+    t.category=(t.mode==='acknowledge')?'':((o.category||'').toString().toLowerCase().trim()||'unsorted');
+    if(Array.isArray(o.related_indices)) t.related=o.related_indices.map(i=>prior[i]&&prior[i].id).filter(Boolean);
+    t.state=(o.state||'').toString().toLowerCase().trim()||'neutral';
+    t.grounding=(o.grounding||'').toString().trim();
+    t.message=normalizeClaraReply(o.message);
+    if(t.message){
+      t.speak=true; t.speakType=t.mode;
+      if(currentId!==t.id) showSpeak(t.mode,t.message);
+    }
+    const fsug=(o.folder||'').toString().trim(); if(fsug&&!t.folder) t.folderSuggest=fsug;
+    if(o.profile_note){ state.profile=mergeProfile(state.profile,o.profile_note); saveProfile(); renderProfile(); }
+    if(o.interaction_note) addInteractionNote(o.interaction_note);
+  }catch(e){ t.idea=firstSentence(t.raw); t.category=''; t.mode='acknowledge'; }
+  t.status='done'; saveThoughts(); renderLabels(); renderStream(); renderRecents();
+  if(currentView==='conversation'&&currentId) renderConversation();
+  if(currentView==='folder') renderFolderView();
+  if(t.speak) hideSaving(); else showSaved();
+}
+function showSpeak(type,msg){ $('speakTag').textContent=type||'clara'; $('speakMsg').textContent=msg; $('speak').classList.add('show'); }
+
+async function askThinking(q){
+  q=(q||'').trim(); if(!q)return;
+  const ans=$('askAnswer'); ans.classList.add('show'); ans.textContent='thinking…';
+  const pool=state.thoughts.filter(x=>x.raw||x.idea);
+  const prior=retrieveEntries(q, pool, 8);
+  const user=assembleClaraContext({currentRaw:q, prior, corpus:pool, profile:state.profile, interactions:state.interactions, folders:state.folders})+`\n\nAnswer using ONLY the retrieved entries and profile above. If nothing relevant is stored, say what you'd need — never invent. Reply as Clara (plain prose, no JSON).`;
+  try{ ans.textContent=normalizeClaraReply(await callClaude(CLARA_SYSTEM,user,{temperature:REFLECTION_TEMPERATURE}))||"Nothing in your thinking speaks to that yet."; }
+  catch(e){ ans.textContent="Couldn't reach the thinking engine just now — try again in a moment."; }
+}
+
+async function findContent(){
+  const res=$('contentResults');
+  const list=state.thoughts.filter(x=>x.idea).map(x=>`- ${x.idea} (${x.category||'—'})`).join('\n');
+  if(!list){ res.innerHTML='<div class="empty">Nothing stored yet — dump a few thoughts first.</div>'; return; }
+  res.innerHTML='<div class="empty">Scanning your thoughts…</div>';
+  try{
+    const raw=await callClaude(CONTENT_SYSTEM,`MY THOUGHTS:\n${list}\n\nReturn ONLY the JSON array.`);
+    const s=raw.replace(/```json|```/g,'').trim(); const a=s.indexOf('['), b=s.lastIndexOf(']');
+    const arr=JSON.parse(s.slice(a,b+1));
+    if(!Array.isArray(arr)||!arr.length){ res.innerHTML='<div class="empty">No strong content angles yet — keep dumping ideas.</div>'; return; }
+    res.innerHTML=arr.map(c=>`<div class="content-card">
+      <div class="cc-hook">${esc(c.hook||'')}</div>
+      <div class="cc-angle">${esc(c.angle||'')}</div>
+      <div class="cc-meta">${c.format?`<span class="chip">${esc(c.format)}</span>`:''}<span class="cc-src">from: ${esc(c.source_idea||'')}</span></div>
+    </div>`).join('');
+  }catch(e){ res.innerHTML='<div class="empty">Couldn\'t reach the thinking engine just now — try again in a moment.</div>'; }
+}
+$('findContent').addEventListener('click',findContent);
+
+let filter='', catFilter='';
+function renderLabels(){
+  const el=$('labels'); if(!el)return;
+  const cats=[...new Set(state.thoughts.map(t=>(t.category||'').trim()).filter(Boolean))].sort();
+  if(!cats.length){ el.innerHTML=''; return; }
+  let html=`<span class="label-chip${catFilter?'':' active'}" data-cat="">all</span>`;
+  cats.forEach(c=>{ html+=`<span class="label-chip${catFilter===c?' active':''}" data-cat="${esc(c)}">${esc(c)}</span>`; });
+  el.innerHTML=html;
+  el.querySelectorAll('.label-chip').forEach(c=>c.addEventListener('click',()=>{ catFilter=c.dataset.cat; renderLabels(); renderStream(); }));
+}
+function renderThoughtList(container, list, emptyMsg){
+  if(!container)return;
+  if(!list.length){ container.innerHTML=`<div class="empty">${emptyMsg}</div>`; return; }
+  let html='', lastDay='';
+  list.forEach(t=>{
+    const day=dayLabel(t.ts);
+    if(day!==lastDay){ html+=`<div class="daygroup"><div class="dayhead">${day}</div>`; if(lastDay)html=html.replace('<div class="daygroup">','</div><div class="daygroup">'); lastDay=day; }
+    if(t.status==='thinking'){
+      html+=`<div class="thought thinking"><div class="idea">${esc(t.raw)}</div><div class="meta"><span class="thinking-tag"><span class="dot"></span> sorting & connecting…</span></div></div>`;
+    }else{
+      const relCount=(t.related||[]).filter(id=>state.thoughts.find(x=>x.id===id)).length;
+      const relMeta=relCount?`<span>· ${relCount} connection${relCount>1?'s':''}</span>`:'';
+      html+=`<div class="thought" data-open="${t.id}"><span class="chev">›</span><div class="idea">${esc(t.idea)}</div><div class="meta">${t.category?`<span class="chip">${esc(t.category)}</span>`:''}<span>${timeStr(t.ts)}</span>${relMeta}</div></div>`;
+    }
+  });
+  html+='</div>';
+  container.innerHTML=html;
+  container.querySelectorAll('[data-open]').forEach(el=>el.addEventListener('click',()=>openConversation(el.dataset.open)));
+}
+function renderStream(){
+  let list=state.thoughts;
+  if(catFilter) list=list.filter(t=>(t.category||'').trim()===catFilter);
+  if(filter) list=list.filter(t=>((t.idea||'')+' '+(t.raw||'')+' '+(t.category||'')).toLowerCase().includes(filter));
+  const empty=(filter||catFilter)?'Nothing matches that yet.':'Empty for now. Say the thing rattling around your head — Clara holds it so you don\'t have to.';
+  renderThoughtList($('stream'), list, empty);
+}
+function renderFolderView(){
+  const f=state.folders.find(x=>x.id===currentFolderId);
+  if(!f){ showView('thoughts'); return; }
+  $('folderTitle').textContent=f.name;
+  const list=state.thoughts.filter(t=>t.folder===f.id);
+  renderThoughtList($('folderStream'), list, 'Nothing in this folder yet. Open a thought and add it here, or dump a new one while this folder is open.');
+}
+function renderProfile(){ $('profileText').textContent=state.profile||''; }
+function renderRecents(){
+  const el=$('recents'); if(!el)return;
+  const list=state.thoughts.slice(0,5);
+  if(!list.length){ el.innerHTML=''; return; }
+  el.innerHTML='<div class="recents-head">Recent dumps</div>'+list.map(t=>`<div class="recent" data-open="${t.id}"><span class="r-idea">${esc(t.idea||t.raw||'…')}</span><span class="r-time">${dayLabel(t.ts)} · ${timeStr(t.ts)}</span></div>`).join('');
+  el.querySelectorAll('[data-open]').forEach(x=>x.addEventListener('click',()=>openConversation(x.dataset.open)));
+}
+
+let currentId=null;
+function openConversation(id){
+  inEntry=false;
+  if(currentView!=='conversation'){ convReturn=currentView; convReturnFolder=currentFolderId; }
+  currentId=id;
+  renderConversation();
+  showView('conversation');
+}
+function isEntryChatOpen(){ return document.querySelector('.app').classList.contains('chat-open'); }
+function syncBotThinking(){
+  const bot=$('claraBot'); if(!bot) return;
+  const pending=inEntry && currentEntry && (currentEntry.thread||[]).some(m=>m.pending);
+  bot.classList.toggle('thinking', !!pending);
+}
+function setEntryChatOpen(open, persist){
+  const app=document.querySelector('.app');
+  const on=!!open && inEntry;
+  app.classList.toggle('chat-open', on);
+  const bot=$('claraBot');
+  if(bot){
+    bot.setAttribute('aria-pressed', on?'true':'false');
+    bot.setAttribute('aria-label', on?'Close chat':'Talk with Clara');
+  }
+  if(persist && currentEntry){
+    currentEntry.chatOpen=on;
+    saveEntryRecord(currentEntry);
+  }
+  if(on){
+    renderEntryChat();
+    const inp=$('composerInput'); if(inp) setTimeout(()=>inp.focus(), 80);
+  }
+  syncBotThinking();
+}
+function renderEntryChat(){
+  const b=$('convBody');
+  const back=$('convBack');
+  const head=$('entryChatHead');
+  if(back) back.style.display='none';
+  if(head) head.style.display='';
+  if(!currentEntry){ b.innerHTML=''; syncBotThinking(); return; }
+  if(!Array.isArray(currentEntry.thread)) currentEntry.thread=[];
+  const thread=currentEntry.thread;
+  if(!thread.length){
+    b.innerHTML='';
+  } else {
+    let latestScan=-1;
+    thread.forEach((m,i)=>{ if(m.kind==='scan'&&!m.pending) latestScan=i; });
+    let html='';
+    thread.forEach((m,i)=>{
+      if(m.role==='user') html+=`<div class="bubble user">${esc(m.text)}</div>`;
+      else if(m.kind==='scan') html+=`<div class="bubble clara scan${m.pending?' pending':''}">${m.pending?'<span class="dot"></span> scanning…':formatScanBubble(m,i,i===latestScan)}</div>`;
+      else html+=`<div class="bubble clara${m.pending?' pending':''}">${m.pending?'<span class="dot"></span> thinking…':formatBubbleHtml(m.text)}</div>`;
+    });
+    ensureStoryFields(currentEntry, true);
+    if(currentEntry.storyMode&&currentEntry.ready&&!thread.some(m=>m.pending)){
+      html+=`<div class="story-draft"><button class="journal-btn" id="writeStoryDraft" type="button">Write the draft</button></div>`;
+    }
+    b.innerHTML=html;
+    bindScanAsks(b);
+    const draftBtn=$('writeStoryDraft');
+    if(draftBtn) draftBtn.addEventListener('click',()=>writeStoryDraft(currentEntry));
+  }
+  syncBotThinking();
+  $('scroll').scrollTop=$('scroll').scrollHeight;
+}
+function renderConversation(){
+  const b=$('convBody'); const t=state.thoughts.find(x=>x.id===currentId);
+  const backBtn=$('convBack');
+  if(backBtn) backBtn.style.display='';
+  const head=$('entryChatHead'); if(head) head.style.display='none';
+  if(!t){ b.innerHTML='<div class="empty">That thought is gone.</div>'; return; }
+  const rel=(t.related||[]).map(id=>state.thoughts.find(x=>x.id===id)).filter(Boolean);
+  const back=state.thoughts.filter(x=>x.id!==t.id&&(x.related||[]).includes(t.id));
+  const wikilink=r=>`<a class="wikilink" data-open="${r.id}">[[${esc(r.idea||firstSentence(r.raw))}]]</a>`;
+  const showSuggest=!t.folder&&t.folderSuggest&&!t.suggestDismissed;
+  const folderOpts=`<option value="">📁 No folder</option>`+state.folders.map(f=>`<option value="${f.id}"${t.folder===f.id?' selected':''}>📁 ${esc(f.name)}</option>`).join('')+`<option value="__new">+ New folder…</option>`;
+  ensureStoryFields(t, false);
+  let html=`<div class="conv-title">${esc(t.idea||firstSentence(t.raw))}</div><div class="conv-date">${dayLabel(t.ts)} · ${timeStr(t.ts)}</div>`;
+  html+=`<button class="conv-piece-link" id="makePiece">Make a piece</button>`;
+  if(!t.storyMode) html+=`<button class="conv-piece-link" id="startStory" type="button">Interview for a story</button>`;
+  if(t.storyMode&&t.ready&&!(t.thread||[]).some(m=>m.pending)) html+=`<div class="story-draft"><button class="journal-btn" id="writeStoryDraft" type="button">Write the draft</button></div>`;
+  if(!showSuggest){
+    html+=`<div class="conv-folder"><select id="convFolderSel">${folderOpts}</select></div>`;
+  } else {
+    const match=state.folders.find(f=>f.name.toLowerCase()===t.folderSuggest.toLowerCase());
+    const opts=(match?'':`<option value="__new" selected>${esc(t.folderSuggest)}</option>`)+state.folders.map(f=>`<option value="${f.id}"${match&&match.id===f.id?' selected':''}>${esc(f.name)}</option>`).join('')+`<option value="__create">+ New folder…</option>`;
+    html+=`<div class="folder-suggest"><span class="fs-spark">✦</span><span class="fs-label">Suggested folder</span><select id="fsSelect">${opts}</select><button class="fs-add" id="fsAdd">Add</button><button class="fs-x" id="fsDismiss" aria-label="Dismiss">×</button></div>`;
+  }
+  html+=`<div class="bubble user">${esc(t.raw)}</div>`;
+  if(t.status==='thinking'){ html+=`<div class="bubble clara pending"><span class="dot"></span> thinking…</div>`; }
+  // Clara's reply always renders — no mode gate, no label.
+  if(t.message){ html+=`<div class="bubble clara speak-bubble">${formatBubbleHtml(t.message)}</div>`; }
+  (t.thread||[]).forEach(m=>{
+    if(m.role==='user') html+=`<div class="bubble user">${esc(m.text)}</div>`;
+    else html+=`<div class="bubble clara${m.pending?' pending':''}">${m.pending?'<span class="dot"></span> thinking…':formatBubbleHtml(m.text)}</div>`;
+  });
+  if(rel.length||back.length){
+    html+='<div class="conv-rel">';
+    if(rel.length) html+=`<div class="clara-label">Connects to</div>${rel.map(wikilink).join('')}`;
+    if(back.length) html+=`<div class="clara-label${rel.length?' spaced':''}">linked from</div>${back.map(wikilink).join('')}`;
+    html+='</div>';
+  }
+  b.innerHTML=html;
+  b.querySelectorAll('[data-open]').forEach(el=>el.addEventListener('click',()=>openConversation(el.dataset.open)));
+  const makePiece=$('makePiece'); if(makePiece) makePiece.addEventListener('click',()=>openPiece(t.id));
+  const startStory=$('startStory'); if(startStory) startStory.addEventListener('click',()=>{ t.storyMode=true; ensureStoryFields(t,true); saveThoughts(); renderConversation(); });
+  const draftBtn=$('writeStoryDraft'); if(draftBtn) draftBtn.addEventListener('click',()=>writeStoryDraft(t));
+  const fsel=$('convFolderSel'); if(fsel) fsel.addEventListener('change',()=>assignFolder(t,fsel.value));
+  const fssel=$('fsSelect'); if(fssel) fssel.addEventListener('change',()=>{
+    if(fssel.value!=='__create')return;
+    const name=(prompt('Name this folder')||'').trim();
+    if(!name){ renderConversation(); return; }
+    const f=createFolder(name); t.folder=f.id; t.folderSuggest=''; saveThoughts(); renderFolders(); renderConversation();
+  });
+  const fadd=$('fsAdd'); if(fadd) fadd.addEventListener('click',()=>{
+    const sel=$('fsSelect'); const val=sel?sel.value:'__new';
+    let fid;
+    if(val==='__new'){ fid=createFolder(t.folderSuggest).id; }
+    else if(val==='__create'){ const name=(prompt('Name this folder')||'').trim(); if(!name)return; fid=createFolder(name).id; }
+    else { fid=val; }
+    t.folder=fid; t.folderSuggest=''; saveThoughts(); renderFolders(); renderConversation();
+  });
+  const fdis=$('fsDismiss'); if(fdis) fdis.addEventListener('click',()=>{ t.suggestDismissed=true; saveThoughts(); renderConversation(); });
+  $('scroll').scrollTop=$('scroll').scrollHeight;
+}
+
+/* piece producer — derived story spine; never mutates raw entries */
+const PIECE_SPINE=['hook','why','turn','vulnerable','close'];
+let currentPieceSourceId=null;
+let producerSuggestion=null, producerEditing=false, producerLoading=false, producerError='';
+
+function getPieceForSource(sourceId){ return (state.pieces||[]).find(p=>p.sourceId===sourceId)||null; }
+function getStorySource(id){
+  const t=state.thoughts.find(x=>x.id===id);
+  if(t) return t;
+  return loadEntry(id);
+}
+function formatStoryConversation(host){
+  return (host.thread||[]).filter(m=>!m.pending&&m.kind!=='scan').map(m=>(m.role==='clara'?'Clara: ':'Them: ')+m.text).join('\n\n');
+}
+function producerSourcePrompt(host, extra){
+  const collected=formatCollectedMaterial(host);
+  return 'RAW ENTRY:\n"""'+storyEntryRaw(host)+'"""\n\nCOLLECTED ANSWERS (the user\'s own words; source material; you may use them; you may not add words; do not write them into the entry):\n"""'+(collected||'(none)')+'"""'+(extra||'');
+}
+async function writeStoryDraft(host){
+  if(!host) return;
+  currentPieceSourceId=host.id;
+  producerLoading=true; producerError=''; producerSuggestion=null; producerEditing=false;
+  showView('piece');
+  try{
+    const convo=formatStoryConversation(host);
+    const user=producerSourcePrompt(host,'\n\nCONVERSATION:\n"""'+(convo||'(none)')+'"""\n\nReturn ONLY the JSON object.');
+    producerSuggestion=normalizeProducerResult(parseJSON(await callClaude(PRODUCER_SYSTEM,user)));
+  }catch(e){
+    producerSuggestion=null;
+    producerError="Couldn't arrange this entry just now — try again in a moment.";
+  }
+  producerLoading=false; renderPieceView();
+}
+function openPiece(sourceId){
+  currentPieceSourceId=sourceId;
+  producerSuggestion=null; producerEditing=false; producerLoading=false; producerError='';
+  showView('piece');
+}
+function serializePieceDraft(beats){
+  return (beats||[]).map(b=>{
+    const label=b.beat.toUpperCase();
+    if(b.status==='present') return label+'\n'+(b.content||'');
+    return label+' (missing)\n'+(b.question||'');
+  }).join('\n\n');
+}
+function normalizeProducerResult(o){
+  if(!o||typeof o!=='object') throw new Error('bad shape');
+  if(o.not_a_story===true) return { not_a_story:true, reason:(o.reason||'This entry does not read as a personal story.').toString().trim(), beats:[] };
+  const by={};
+  (Array.isArray(o.beats)?o.beats:[]).forEach(b=>{ if(b&&b.beat) by[String(b.beat).toLowerCase()]=b; });
+  const beats=PIECE_SPINE.map(name=>{
+    const src=by[name]||{};
+    let status=String(src.status||'').toLowerCase();
+    if(status!=='present'&&status!=='missing') status=(src.content&&String(src.content).trim())?'present':'missing';
+    const content=status==='present'?String(src.content||'').trim():null;
+    const question=status==='missing'?String(src.question||'').trim():null;
+    if(status==='present'&&!content) throw new Error('present beat missing content');
+    if(status==='missing'&&!question) throw new Error('missing beat missing question');
+    return { beat:name, status, content:content||null, question:question||null };
+  });
+  return { not_a_story:false, reason:null, beats };
+}
+function collectEditedBeats(){
+  if(!producerSuggestion||!producerSuggestion.beats) return null;
+  return producerSuggestion.beats.map(b=>{
+    const el=document.querySelector('.piece-edit[data-beat="'+b.beat+'"]');
+    const val=el?el.value.trim():'';
+    if(b.status==='present') return { beat:b.beat, status:'present', content:val||b.content, question:null };
+    return { beat:b.beat, status:'missing', content:null, question:val||b.question };
+  });
+}
+function renderPieceView(){
+  const t=getStorySource(currentPieceSourceId);
+  const body=$('pieceBody'); const actions=$('pieceActions'); const produceBtn=$('pieceProduce');
+  if(!t){ $('pieceRaw').textContent=''; body.innerHTML='<div class="piece-status">That thought is gone.</div>'; actions.style.display='none'; return; }
+  $('pieceRaw').textContent=storyEntryRaw(t)||'';
+  produceBtn.textContent=(producerSuggestion||getPieceForSource(t.id))?'Regenerate':'Produce piece';
+
+  if(producerLoading){ actions.style.display='none'; body.innerHTML='<div class="piece-status">Arranging your words…</div>'; return; }
+  if(producerError){ actions.style.display='none'; body.innerHTML=`<div class="piece-status">${esc(producerError)}</div><div class="piece-actions"><button class="piece-action" id="pieceRetry">Try again</button></div>`; $('pieceRetry').addEventListener('click',producePiece); return; }
+
+  const draft=producerSuggestion;
+  const committed=getPieceForSource(t.id);
+  const isSuggestion=!!draft;
+  const source=draft||(committed?{ not_a_story:false, beats:committed.beats }:null);
+
+  if(!source){ actions.style.display='none'; body.innerHTML='<div class="piece-status">Produce a piece to arrange this entry into a story spine.</div>'; return; }
+  if(source.not_a_story){
+    actions.style.display=draft?'flex':'none';
+    body.innerHTML=`<div class="piece-status">${esc(source.reason||'This entry does not read as a personal story.')}</div>`;
+    return;
+  }
+
+  actions.style.display=draft?'flex':'none';
+  if(producerEditing&&draft){
+    body.innerHTML=draft.beats.map(b=>{
+      const val=b.status==='present'?(b.content||''):(b.question||'');
+      const cls=b.status==='missing'?'piece-edit question':'piece-edit';
+      return `<div class="piece-beat"><div class="piece-label">${esc(b.beat)}</div><textarea class="${cls}" data-beat="${b.beat}" rows="3">${esc(val)}</textarea></div>`;
+    }).join('');
+    $('pieceEdit').textContent='Done editing';
+    return;
+  }
+  $('pieceEdit').textContent='Edit';
+  body.innerHTML=source.beats.map(b=>{
+    const text=b.status==='present'
+      ? `<p class="piece-text${isSuggestion?' piece-suggestion':''}">${esc(b.content)}</p>`
+      : `<p class="piece-question">${esc(b.question)}</p>`;
+    return `<div class="piece-beat"><div class="piece-label">${esc(b.beat)}</div>${text}</div>`;
+  }).join('');
+}
+async function producePiece(){
+  const t=getStorySource(currentPieceSourceId); if(!t)return;
+  producerLoading=true; producerError=''; producerSuggestion=null; producerEditing=false; renderPieceView();
+  try{
+    const raw=await callClaude(PRODUCER_SYSTEM,producerSourcePrompt(t,'\n\nReturn ONLY the JSON object.'));
+    producerSuggestion=normalizeProducerResult(parseJSON(raw));
+  }catch(e){
+    producerSuggestion=null;
+    producerError="Couldn't arrange this entry just now — try again in a moment.";
+  }
+  producerLoading=false; renderPieceView();
+}
+function usePiece(){
+  const t=getStorySource(currentPieceSourceId); if(!t||!producerSuggestion)return;
+  if(producerSuggestion.not_a_story){ producerSuggestion=null; producerEditing=false; renderPieceView(); return; }
+  let beats=producerSuggestion.beats;
+  if(producerEditing){ beats=collectEditedBeats(); if(!beats)return; }
+  const existing=getPieceForSource(t.id);
+  const now=Date.now();
+  if(existing){ existing.beats=beats; existing.updatedAt=now; }
+  else state.pieces.unshift({ id:'p'+now+Math.random().toString(36).slice(2,5), sourceId:t.id, beats, createdAt:now, updatedAt:now });
+  savePieces();
+  producerSuggestion=null; producerEditing=false; renderPieceView();
+}
+function togglePieceEdit(){
+  if(!producerSuggestion||producerSuggestion.not_a_story)return;
+  if(producerEditing){
+    const beats=collectEditedBeats();
+    if(beats) producerSuggestion={ ...producerSuggestion, beats };
+    producerEditing=false;
+  } else producerEditing=true;
+  renderPieceView();
+}
+function discussPiece(){
+  const t=state.thoughts.find(x=>x.id===currentPieceSourceId); if(!t)return;
+  let beats=null;
+  if(producerSuggestion&&!producerSuggestion.not_a_story){
+    beats=producerEditing?collectEditedBeats():producerSuggestion.beats;
+  } else {
+    const committed=getPieceForSource(t.id);
+    if(committed) beats=committed.beats;
+  }
+  if(!beats)return;
+  const draft='I want to discuss this piece structure:\n\n'+serializePieceDraft(beats);
+  currentId=t.id;
+  showView('conversation');
+  const inp=$('composerInput');
+  inp.value=draft; autoGrow(); inp.focus();
+}
+$('pieceBack').addEventListener('click',()=>{
+  if(!currentPieceSourceId){ showView('thoughts'); return; }
+  if(state.thoughts.find(x=>x.id===currentPieceSourceId)) openConversation(currentPieceSourceId);
+  else if(loadEntry(currentPieceSourceId)) openJournalEntry(currentPieceSourceId);
+  else showView('thoughts');
+});
+$('pieceProduce').addEventListener('click',producePiece);
+$('pieceUse').addEventListener('click',usePiece);
+$('pieceEdit').addEventListener('click',togglePieceEdit);
+$('pieceDiscuss').addEventListener('click',discussPiece);
+
+const THREAD_SYSTEM = CLARA_SYSTEM+`
+
+THIS TURN:
+You are inside ONE focused conversation about a single thought of theirs. Reply in plain prose with no JSON, labels, or prefix. Apply the MID-CONVERSATION mode from their first reply onward: lift the brevity constraint and use multiple paragraphs only when each adds distinct material. Stay grounded in the retrieved context and never invent patterns from an empty corpus. Never use em dashes or en dashes. Rewrite with ordinary punctuation and connecting words.`;
+const ENTRY_CHAT_SYSTEM = CLARA_SYSTEM+`
+
+THIS TURN:
+You are in a conversation about ONE journal entry they are writing. The entry is in the first user message. Reply in plain prose with no JSON, labels, or prefix. Do not rewrite the entry. Do not invent facts that are not in the entry or this chat. Never use em dashes or en dashes. Rewrite with ordinary punctuation and connecting words.`;
+async function runStoryTurn(host, after){
+  ensureStoryFields(host, true);
+  host.storyMode=true;
+  let reply;
+  try{ reply=normalizeClaraReply(await callClaude(STORY_SYSTEM, storyMessages(host), {temperature:REFLECTION_TEMPERATURE}))||'…'; }
+  catch(e){ reply="Couldn't reach the thinking engine — "+(e.message||'try again in a moment')+"."; }
+  host.thread=(host.thread||[]).filter(m=>!m.pending);
+  host.thread.push({role:'clara',text:reply,ts:Date.now()});
+  after();
+  if(reply.indexOf("Couldn't reach")!==0){
+    try{ await scoreStoryState(host); after(); }
+    catch(e){}
+  }
+}
+async function addEntryFollowup(text){
+  if(!currentEntry) return;
+  persistJournal();
+  ensureStoryFields(currentEntry, true);
+  if(!Array.isArray(currentEntry.thread)) currentEntry.thread=[];
+  currentEntry.thread.push({role:'user',text,ts:Date.now()});
+  currentEntry.thread.push({role:'clara',text:'',ts:Date.now(),pending:true});
+  saveEntryRecord(currentEntry);
+  if(!isEntryChatOpen()) setEntryChatOpen(true,true);
+  else renderEntryChat();
+  if(currentEntry.storyMode){
+    await runStoryTurn(currentEntry, ()=>{ saveEntryRecord(currentEntry); renderEntryChat(); });
+    return;
+  }
+  const title=currentEntry.title||'';
+  const body=currentEntry.body||'';
+  const messages=[
+    {role:'user',content:`JOURNAL TITLE: ${title||'(untitled)'}\n\nJOURNAL ENTRY:\n"""${body||'(empty)'}"""`},
+    ...currentEntry.thread.filter(m=>!m.pending&&m.kind!=='scan').map(m=>({
+      role:m.role==='clara'?'assistant':'user',
+      content:m.text
+    }))
+  ];
+  let reply;
+  try{ reply=normalizeClaraReply(await callClaude(ENTRY_CHAT_SYSTEM,messages,{temperature:REFLECTION_TEMPERATURE}))||'…'; }
+  catch(e){ reply="Couldn't reach the thinking engine — "+(e.message||'try again in a moment')+"."; }
+  currentEntry.thread=currentEntry.thread.filter(m=>!m.pending);
+  currentEntry.thread.push({role:'clara',text:reply,ts:Date.now()});
+  saveEntryRecord(currentEntry);
+  renderEntryChat();
+}
+async function addFollowup(text){
+  const t=state.thoughts.find(x=>x.id===currentId); if(!t)return;
+  ensureStoryFields(t, false);
+  if(!Array.isArray(t.thread)) t.thread=[];
+  t.thread.push({role:'user',text,ts:Date.now()});
+  t.thread.push({role:'clara',text:'',ts:Date.now(),pending:true});
+  renderConversation(); saveThoughts();
+  if(t.storyMode){
+    await runStoryTurn(t, ()=>{ saveThoughts(); renderConversation(); });
+    return;
+  }
+  const pool=state.thoughts.filter(x=>x.id!==t.id&&(x.raw||x.idea));
+  const prior=retrieveEntries(t.raw+' '+text, pool, 8);
+  const context=assembleClaraContext({currentRaw:t.raw, prior, corpus:pool, profile:state.profile, interactions:state.interactions, folders:state.folders});
+  const messages=[
+    {role:'user',content:context},
+    ...t.thread.filter(m=>!m.pending).map(m=>({
+      role:m.role==='clara'?'assistant':'user',
+      content:m.text
+    }))
+  ];
+  let reply;
+  try{ reply=normalizeClaraReply(await callClaude(THREAD_SYSTEM,messages,{temperature:REFLECTION_TEMPERATURE}))||'…'; }
+  catch(e){ reply="Couldn't reach the thinking engine — "+(e.message||'try again in a moment')+"."; }
+  t.thread=t.thread.filter(m=>!m.pending);
+  t.thread.push({role:'clara',text:reply,ts:Date.now()});
+  renderConversation(); saveThoughts();
+}
+
+/* views */
+let currentView='home', currentFolderId='';
+let convReturn='thoughts', convReturnFolder='';
+function showView(v,folderId){
+  currentView=v;
+  if(v!=='home'&&v!=='conversation') inEntry=false;
+  const showJournal=inEntry;
+  document.querySelector('.app').classList.toggle('has-journal', showJournal);
+  if(!showJournal){
+    const appEl=document.querySelector('.app');
+    appEl.classList.remove('sidebar-open','sidebar-pinned','chat-open');
+    const tg=$('sidebarToggle'); if(tg) tg.setAttribute('aria-pressed','false');
+    const bot=$('claraBot'); if(bot){ bot.setAttribute('aria-pressed','false'); bot.setAttribute('aria-label','Talk with Clara'); bot.classList.remove('thinking'); }
+  } else {
+    setEntryChatOpen(!!(currentEntry&&currentEntry.chatOpen), false);
+  }
+  if(v==='folder'){ currentFolderId=folderId||currentFolderId; }
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('active', inEntry?x.dataset.view==='thoughts':(x.dataset.view===v || (v==='conversation'&&x.dataset.view==='thoughts'))));
+  document.querySelectorAll('.folder-item').forEach(x=>x.classList.toggle('active', v==='folder'&&x.dataset.folder===currentFolderId));
+  const pane=inEntry?'conversation':v;
+  ['home','thoughts','folder','conversation','piece','mind','content','shared','settings'].forEach(id=>$('view-'+id).style.display=(id===pane?(id==='home'?'flex':'block'):'none'));
+  if(v==='settings') loadAudioDevices();
+  if(v==='folder') renderFolderView();
+  if(v==='thoughts') renderEntryList();
+  if(v==='piece') renderPieceView();
+  if(inEntry) renderEntryChat();
+  const composer=document.querySelector('.composer');
+  composer.classList.toggle('in-home',v==='home'&&!inEntry);
+  composer.classList.toggle('in-conversation',inEntry||v==='conversation');
+  if(v==='home'&&!inEntry) $('homeComposerSlot').appendChild(composer);
+  else document.querySelector('.main').appendChild(composer);
+  updatePlaceholder();
+  if(!inEntry) $('scroll').scrollTop=0;
+}
+document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.addEventListener('click',()=>{
+  if(n.dataset.view==='home') inEntry=false;
+  showView(n.dataset.view);
+}));
+
+(function bindSidebarHover(){
+  const app=document.querySelector('.app');
+  const toggle=$('sidebarToggle');
+  let closeTimer=null;
+  let ignoreHover=false;
+  function isPinned(){ return app.classList.contains('sidebar-pinned'); }
+  function openSidebar(){
+    if(!app.classList.contains('has-journal')||ignoreHover) return;
+    clearTimeout(closeTimer);
+    app.classList.add('sidebar-open');
+  }
+  function closeSidebar(){
+    if(isPinned()) return;
+    clearTimeout(closeTimer);
+    closeTimer=setTimeout(()=>{
+      if(isPinned()||ignoreHover) return;
+      app.classList.remove('sidebar-open');
+    },160);
+  }
+  toggle.addEventListener('mouseenter',openSidebar);
+  toggle.addEventListener('mouseleave',()=>{
+    ignoreHover=false;
+    closeSidebar();
+  });
+  toggle.addEventListener('click',e=>{
+    e.preventDefault();
+    if(!app.classList.contains('has-journal')) return;
+    const pinned=app.classList.toggle('sidebar-pinned');
+    toggle.setAttribute('aria-pressed', pinned?'true':'false');
+    if(pinned){
+      ignoreHover=false;
+      clearTimeout(closeTimer);
+      app.classList.add('sidebar-open');
+    }else{
+      ignoreHover=true;
+      clearTimeout(closeTimer);
+      app.classList.remove('sidebar-open');
+    }
+  });
+})();
+$('claraBot').addEventListener('click',()=>{
+  if(!inEntry) return;
+  setEntryChatOpen(!isEntryChatOpen(), true);
+});
+$('entryChatClose').addEventListener('click',()=>{ if(inEntry) setEntryChatOpen(false, true); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && inEntry && isEntryChatOpen() && !e.metaKey && !e.ctrlKey){
+    const tag=(e.target&&e.target.tagName||'').toLowerCase();
+    if(tag==='textarea'||tag==='input'||(e.target&&e.target.isContentEditable)) return;
+    setEntryChatOpen(false, true);
+  }
+});
+$('convBack').addEventListener('click',()=>{ if(convReturn==='folder') showView('folder',convReturnFolder); else showView(convReturn); });
+
+/* folders */
+$('newFolder').addEventListener('click',()=>{
+  const name=(prompt('Name this folder')||'').trim(); if(!name)return;
+  const f=createFolder(name); renderFolders(); showView('folder',f.id);
+});
+$('folderRename').addEventListener('click',()=>{
+  const f=state.folders.find(x=>x.id===currentFolderId); if(!f)return;
+  const name=(prompt('Rename folder',f.name)||'').trim(); if(!name)return;
+  f.name=name; saveFolders(); renderFolders(); renderFolderView();
+});
+$('folderDelete').addEventListener('click',()=>{
+  const f=state.folders.find(x=>x.id===currentFolderId); if(!f)return;
+  if(!confirm(`Delete folder "${f.name}"? Your thoughts stay — they just won't be filed here anymore.`))return;
+  state.thoughts.forEach(t=>{ if(t.folder===f.id) t.folder=''; });
+  state.folders=state.folders.filter(x=>x.id!==f.id);
+  saveFolders(); saveThoughts(); renderFolders(); showView('thoughts');
+});
+function assignFolder(t,val){
+  if(val==='__new'){ const name=(prompt('Name this folder')||'').trim(); if(!name){ renderConversation(); return; } const f=createFolder(name); t.folder=f.id; }
+  else { t.folder=val; }
+  saveThoughts(); renderFolders(); renderConversation();
+}
+
+/* search */
+$('searchInput').addEventListener('input',e=>{ filter=e.target.value.toLowerCase().trim(); if(filter)showView('thoughts'); renderStream(); });
+
+/* composer */
+function updatePlaceholder(){ const inp=$('composerInput'); if(!inp)return; inp.placeholder = inEntry ? 'talk about this entry…' : (currentView==='conversation' ? 'add to this conversation…' : 'dump a thought…'); }
+
+/* composer: submit (context-aware) */
+function autoGrow(){ const ta=$('composerInput'); if(!ta)return; ta.style.height='auto'; ta.style.height=Math.min(120,ta.scrollHeight)+'px'; }
+function createEntryFromDump(raw){
+  const empty=currentEntry && !(currentEntry.title||'').trim() && !(currentEntry.body||'').trim() && !(currentEntry.thread||[]).length;
+  if(!empty && currentEntry) persistJournal('saved');
+  if(!empty){
+    currentEntry=newJournalEntry();
+  }
+  currentEntry.body=raw;
+  saveEntryRecord(currentEntry);
+  rememberEntryId(currentEntry.id);
+  paintJournal();
+  inEntry=true;
+  showView('home');
+}
+function submitComposer(){
+  const inp=$('composerInput'); const v=inp.value.trim(); if(!v)return; inp.value=''; autoGrow();
+  if(inEntry&&currentEntry){ addEntryFollowup(v); return; }
+  if(currentView==='conversation'&&currentId){ addFollowup(v); return; }
+  createEntryFromDump(v);
+}
+$('sendBtn').addEventListener('click',submitComposer);
+$('composerInput').addEventListener('input',autoGrow);
+$('composerInput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); submitComposer(); } });
+$('speakX').addEventListener('click',()=>$('speak').classList.remove('show'));
+
+/* background voice recorder — drops transcript into the composer (no auto-send).
+   Prefers server-side streaming STT (Deepgram) when available; falls back to the browser's Web Speech engine. */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false,finalText='',engine='webspeech';
+let sttAvailable=false;
+fetch('/api/stt-status').then(r=>r.json()).then(d=>{ sttAvailable=!!(d&&d.available); }).catch(()=>{});
+if(SR){ rec=new SR(); rec.continuous=true; rec.interimResults=true; rec.lang='en-US';
+  rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript+' ';else interim+=r[0].transcript;}$('interim').textContent=(finalText+interim).trim()||'listening…';};
+  rec.onerror=()=>endVoice(); rec.onend=()=>{if(listening&&engine==='webspeech')finishVoice();};
+}
+
+/* shared mic stream + voice-reactive meter (parallel getUserMedia + AnalyserNode) */
+let micStream=null,micAC=null,micRAF=0;
+async function acquireMicStream(){
+  if(micStream)return micStream;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return null;
+  micStream=await navigator.mediaDevices.getUserMedia({audio: micId?{deviceId:{exact:micId}}:true});
+  return micStream;
+}
+function startMeter(stream){
+  if(!stream)return;
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+  micAC=new AC();
+  const src=micAC.createMediaStreamSource(stream); const an=micAC.createAnalyser(); an.fftSize=256; src.connect(an);
+  const data=new Uint8Array(an.frequencyBinCount); const bars=[...$('micBars').children]; const weight=[0.55,0.85,1,0.8,0.6];
+  (function tick(){
+    an.getByteTimeDomainData(data); let peak=0; for(let i=0;i<data.length;i++){ const v=Math.abs(data[i]-128); if(v>peak)peak=v; }
+    const lvl=Math.min(1,peak/90);
+    bars.forEach((b,i)=>{ const h=4+lvl*15*weight[i%weight.length]*(0.7+Math.random()*0.5); b.style.height=h.toFixed(1)+'px'; });
+    micRAF=requestAnimationFrame(tick);
+  })();
+}
+function stopMicCapture(){
+  if(micRAF)cancelAnimationFrame(micRAF); micRAF=0;
+  if(micAC){ micAC.close().catch(()=>{}); micAC=null; }
+  if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+  const bars=$('micBars'); if(bars)[...bars.children].forEach(b=>b.style.height='4px');
+}
+
+/* Deepgram streaming engine */
+let dgSocket=null,dgRecorder=null,dgFinal='';
+function startDeepgram(stream){
+  engine='deepgram'; dgFinal='';
+  const proto=location.protocol==='https:'?'wss':'ws';
+  dgSocket=new WebSocket(proto+'://'+location.host+'/api/stt');
+  dgSocket.binaryType='arraybuffer';
+  dgSocket.onmessage=ev=>{
+    let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+    if(m.type==='ready'){ startDgRecorder(stream); }
+    else if(m.type==='transcript'){
+      if(m.final){ if(m.text) dgFinal+=m.text+' '; finalText=dgFinal; $('interim').textContent=dgFinal.trim()||'listening…'; }
+      else { $('interim').textContent=(dgFinal+(m.text||'')).trim()||'listening…'; }
+    }
+    else if(m.type==='error'){ fallbackToWebSpeech(); }
+  };
+  dgSocket.onerror=()=>fallbackToWebSpeech();
+}
+function startDgRecorder(stream){
+  if(!stream||typeof MediaRecorder==='undefined'){ fallbackToWebSpeech(); return; }
+  try{ dgRecorder=new MediaRecorder(stream,{mimeType:'audio/webm'}); }
+  catch(e){ try{ dgRecorder=new MediaRecorder(stream); }catch(e2){ fallbackToWebSpeech(); return; } }
+  dgRecorder.ondataavailable=e=>{ if(e.data&&e.data.size&&dgSocket&&dgSocket.readyState===1) e.data.arrayBuffer().then(buf=>{ try{ dgSocket.send(buf); }catch(err){} }); };
+  dgRecorder.start(250);
+}
+function stopDeepgram(){
+  if(dgRecorder){ try{ if(dgRecorder.state!=='inactive') dgRecorder.stop(); }catch(e){} dgRecorder=null; }
+  if(dgSocket){ try{ if(dgSocket.readyState===1) dgSocket.send(JSON.stringify({type:'close'})); dgSocket.close(); }catch(e){} dgSocket=null; }
+}
+function fallbackToWebSpeech(){
+  if(engine==='webspeech'||!listening)return;
+  stopDeepgram(); engine='webspeech';
+  if(rec){ try{ rec.start(); }catch(e){} } else { $('interim').textContent='listening…'; }
+}
+
+async function startVoice(){
+  if(listening)return;
+  finalText='';$('interim').textContent='listening…';
+  listening=true;$('mic').classList.add('live');
+  let stream=null;
+  try{ stream=await acquireMicStream(); }catch(e){ stream=null; }
+  startMeter(stream);
+  if(sttAvailable&&stream&&typeof MediaRecorder!=='undefined'){ startDeepgram(stream); }
+  else if(rec){ engine='webspeech'; try{ rec.start(); }catch(e){} }
+  else if(!stream){ endVoice(); $('composerInput').focus(); }
+}
+function endVoice(){ listening=false;$('mic').classList.remove('live'); stopDeepgram(); stopMicCapture(); }
+function finishVoice(){ const txt=finalText.trim(); endVoice(); $('interim').textContent=''; if(txt){ const inp=$('composerInput'); inp.value=(inp.value?inp.value.trim()+' ':'')+txt; inp.focus(); autoGrow(); } }
+$('mic').addEventListener('click',()=>{
+  if(listening){ listening=false; if(engine==='webspeech'){ try{ rec&&rec.stop(); }catch(e){} } finishVoice(); }
+  else startVoice();
+});
+
+/* settings: audio input/output devices */
+let micId='', spkId='';
+function fillSelect(sel,devices,currentId,fallbackLabel){
+  sel.innerHTML='<option value="">System default</option>';
+  devices.forEach((d,i)=>{ const o=document.createElement('option'); o.value=d.deviceId; o.textContent=d.label||`${fallbackLabel} ${i+1}`; sel.appendChild(o); });
+  if(currentId&&[...sel.options].some(o=>o.value===currentId)) sel.value=currentId;
+}
+async function loadAudioDevices(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices){ $('audioHint').textContent="This browser can't list audio devices."; $('audioPerm').style.display='none'; return; }
+  try{
+    const devs=await navigator.mediaDevices.enumerateDevices();
+    fillSelect($('micSelect'),devs.filter(d=>d.kind==='audioinput'),micId,'Microphone');
+    fillSelect($('spkSelect'),devs.filter(d=>d.kind==='audiooutput'),spkId,'Speaker');
+    const haveLabels=devs.some(d=>d.label);
+    $('audioPerm').style.display=haveLabels?'none':'inline-block';
+  }catch(e){ $('audioHint').textContent='Could not read audio devices: '+(e.message||e); }
+}
+async function requestAudioPerm(){
+  try{ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); await loadAudioDevices(); }
+  catch(e){ $('audioHint').textContent='Mic access was denied — device names stay hidden until you allow it in the browser.'; }
+}
+function applySpeaker(){ if(!spkId)return; document.querySelectorAll('audio,video').forEach(el=>{ if(typeof el.setSinkId==='function') el.setSinkId(spkId).catch(()=>{}); }); }
+$('micSelect').addEventListener('change',e=>{ micId=e.target.value; storeSet('echo:mic',micId); });
+$('spkSelect').addEventListener('change',e=>{ spkId=e.target.value; storeSet('echo:speaker',spkId); applySpeaker(); });
+$('audioPerm').addEventListener('click',requestAudioPerm);
+if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener){ navigator.mediaDevices.addEventListener('devicechange',()=>{ if(currentView==='settings') loadAudioDevices(); }); }
+
+async function routeOutput(a){ if(spkId&&typeof a.setSinkId==='function'){ try{ await a.setSinkId(spkId); }catch(e){} } }
+async function testSpeaker(){
+  const stat=$('testStatus');
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC){ stat.textContent="This browser can't play a test tone."; return; }
+    const ac=new AC(); const dest=ac.createMediaStreamDestination(); const osc=ac.createOscillator(); const g=ac.createGain();
+    osc.type='sine'; osc.frequency.value=440; g.gain.value=0.0001; osc.connect(g); g.connect(dest);
+    const a=new Audio(); a.srcObject=dest.stream; await routeOutput(a); await a.play(); osc.start();
+    const now=ac.currentTime; g.gain.exponentialRampToValueAtTime(0.18,now+0.05); g.gain.exponentialRampToValueAtTime(0.0001,now+0.7);
+    stat.textContent='Playing test tone…';
+    setTimeout(()=>{ try{osc.stop();}catch(e){} a.pause(); ac.close(); stat.textContent='Speaker test done.'; setTimeout(()=>{ if(stat.textContent==='Speaker test done.')stat.textContent=''; },2000); },800);
+  }catch(e){ stat.textContent='Could not play tone: '+(e.message||e); }
+}
+let micTesting=false;
+async function testMic(){
+  if(micTesting) return;
+  const stat=$('testStatus');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof MediaRecorder==='undefined'){ stat.textContent='Recording is not supported in this browser.'; return; }
+  micTesting=true; stat.textContent='Listening… speak now (3s)';
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({audio: micId?{deviceId:{exact:micId}}:true}); }
+  catch(e){ stat.textContent='Mic access failed: '+(e.message||e); micTesting=false; return; }
+  const AC=window.AudioContext||window.webkitAudioContext;
+  const ac=AC?new AC():null; let raf=0;
+  if(ac){ const srcN=ac.createMediaStreamSource(stream); const an=ac.createAnalyser(); an.fftSize=256; srcN.connect(an);
+    const data=new Uint8Array(an.frequencyBinCount); $('micMeter').classList.add('show');
+    (function tick(){ an.getByteTimeDomainData(data); let peak=0; for(let i=0;i<data.length;i++){ const v=Math.abs(data[i]-128); if(v>peak)peak=v; } $('micMeterFill').style.width=Math.min(100,(peak/128)*180)+'%'; raf=requestAnimationFrame(tick); })();
+  }
+  const chunks=[]; const mr=new MediaRecorder(stream); mr.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  mr.onstop=async()=>{
+    if(raf)cancelAnimationFrame(raf); $('micMeter').classList.remove('show'); $('micMeterFill').style.width='0%';
+    stream.getTracks().forEach(t=>t.stop()); if(ac)ac.close();
+    const blob=new Blob(chunks,{type:mr.mimeType||'audio/webm'}); const url=URL.createObjectURL(blob); const a=new Audio(url);
+    await routeOutput(a);
+    stat.textContent='Playing it back…';
+    a.onended=()=>{ URL.revokeObjectURL(url); stat.textContent='Mic test done.'; micTesting=false; setTimeout(()=>{ if(stat.textContent==='Mic test done.')stat.textContent=''; },2500); };
+    try{ await a.play(); }catch(e){ stat.textContent='Recorded, but playback failed: '+(e.message||e); micTesting=false; }
+  };
+  mr.start(); setTimeout(()=>{ if(mr.state!=='inactive') mr.stop(); },3000);
+}
+$('testSpk').addEventListener('click',testSpeaker);
+$('testMic').addEventListener('click',testMic);
+
+/* settings: name */
+$('nameInput').addEventListener('input',e=>{ userName=e.target.value; storeSet('echo:name',userName.trim()); renderGreeting(); });
+
+$('entryTitle').addEventListener('input',()=>{ sizeTitle(); scheduleJournalSave(); placeJournalCaret(true); });
+$('entryTitle').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('entryBody').focus(); } });
+$('entryBody').addEventListener('input',()=>{ scheduleJournalSave(); placeJournalCaret(true); });
+$('entryNew').addEventListener('click',startNewEntry);
+$('entriesNew').addEventListener('click',startNewEntry);
+$('entryScan').addEventListener('click',runJournalScan);
+$('entryDelete').addEventListener('click',()=>{ if(currentEntry) deleteJournalEntry(currentEntry.id); });
+
+function hideJournalCaret(){ const el=$('journalCaret'); if(!el)return; el.classList.remove('show','blink'); }
+function restartJournalCaretBlink(el){ el.classList.remove('blink'); void el.offsetWidth; el.classList.add('blink'); }
+function textareaCaretBox(ta){
+  const s=getComputedStyle(ta);
+  const clone=document.createElement('div');
+  clone.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;overflow:hidden;';
+  ['box-sizing','width','font-family','font-size','font-weight','font-style','line-height','letter-spacing','word-spacing','text-align','text-indent','white-space','word-break','padding-top','padding-right','padding-bottom','padding-left','border-top-width','border-right-width','border-bottom-width','border-left-width'].forEach(k=>clone.style.setProperty(k,s.getPropertyValue(k)));
+  clone.style.width=s.width;
+  clone.textContent=ta.value.slice(0,ta.selectionStart);
+  const mark=document.createElement('span'); mark.textContent='\u200b'; clone.appendChild(mark);
+  document.body.appendChild(clone);
+  const taR=ta.getBoundingClientRect(); const cR=clone.getBoundingClientRect(); const mR=mark.getBoundingClientRect();
+  const height=parseFloat(s.lineHeight)||mR.height||parseFloat(s.fontSize);
+  clone.remove();
+  return {left:taR.left+(mR.left-cR.left)-ta.scrollLeft, top:taR.top+(mR.top-cR.top)-ta.scrollTop, height};
+}
+function contentCaretBox(root){
+  const sel=window.getSelection();
+  if(!sel||!sel.rangeCount||!sel.isCollapsed) return null;
+  const node=sel.focusNode;
+  if(!node||(node!==root&&!root.contains(node))) return null;
+  const range=sel.getRangeAt(0);
+  let rect=range.getBoundingClientRect();
+  const lh=parseFloat(getComputedStyle(root).lineHeight);
+  if(rect&&(rect.height||rect.width)) return {left:rect.left, top:rect.top, height:rect.height||lh};
+  const rects=range.getClientRects();
+  if(rects.length){ const r=rects[0]; return {left:r.left, top:r.top, height:r.height||lh}; }
+  const cs=getComputedStyle(root); const br=root.getBoundingClientRect();
+  return {left:br.left+parseFloat(cs.paddingLeft), top:br.top+parseFloat(cs.paddingTop), height:lh};
+}
+function placeJournalCaret(resetBlink){
+  const el=$('journalCaret'); if(!el)return;
+  if(!document.querySelector('.app.has-journal')){ hideJournalCaret(); return; }
+  const title=$('entryTitle'); const body=$('entryBody'); const active=document.activeElement;
+  let box=null;
+  if(active===title) box=textareaCaretBox(title);
+  else if(active===body||(body&&body.contains(active))) box=contentCaretBox(body);
+  if(!box){ hideJournalCaret(); return; }
+  const clip=document.querySelector('.journal-scroll').getBoundingClientRect();
+  if(box.top+box.height<clip.top||box.top>clip.bottom||box.left<clip.left-2||box.left>clip.right){ hideJournalCaret(); return; }
+  const top=Math.max(box.top,clip.top); const bottom=Math.min(box.top+box.height,clip.bottom);
+  el.style.left=box.left+'px'; el.style.top=top+'px'; el.style.height=Math.max(0,bottom-top)+'px';
+  el.classList.add('show');
+  if(resetBlink!==false) restartJournalCaretBlink(el);
+}
+document.addEventListener('selectionchange',()=>placeJournalCaret(true));
+document.querySelector('.journal-scroll').addEventListener('scroll',()=>placeJournalCaret(false),{passive:true});
+window.addEventListener('resize',()=>placeJournalCaret(false));
+$('entryTitle').addEventListener('focus',()=>placeJournalCaret(true));
+$('entryBody').addEventListener('focus',()=>placeJournalCaret(true));
+$('entryTitle').addEventListener('keyup',()=>placeJournalCaret(true));
+$('entryBody').addEventListener('keyup',()=>placeJournalCaret(true));
+$('entryTitle').addEventListener('click',()=>placeJournalCaret(true));
+$('entryBody').addEventListener('click',()=>placeJournalCaret(true));
+
+bootJournal();
+loadState();
+showView('home');
+</script>
+</body>
+</html>
