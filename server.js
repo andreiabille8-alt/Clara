@@ -1,7 +1,6 @@
 // Clara — tiny server. Serves the app and keeps your Anthropic key off the browser.
 const express = require('express');
 const path = require('path');
-const WebSocket = require('ws');
 require('dotenv').config();
 
 const app = express();
@@ -85,53 +84,13 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Tell the browser whether streaming STT is available so it can pick its engine.
+// Tell the browser whether streaming STT is available, and where the relay lives.
+// The relay is a separate always-on service (see stt-relay/) since it holds a
+// persistent WebSocket, which Vercel's serverless functions can't do.
 app.get('/api/stt-status', (req, res) => {
-  res.json({ available: !!process.env.DEEPGRAM_API_KEY });
+  const url = process.env.STT_RELAY_URL || '';
+  res.json({ available: !!url, url: url || null });
 });
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => console.log(`\n  Clara is running → http://localhost:${PORT}\n`));
-
-// Streaming transcription relay: browser audio ⇄ Deepgram live API (key stays server-side).
-const wss = new WebSocket.Server({ server, path: '/api/stt' });
-wss.on('connection', (client) => {
-  const key = process.env.DEEPGRAM_API_KEY;
-  if (!key) {
-    try { client.send(JSON.stringify({ type: 'error', error: 'no_key' })); } catch (e) {}
-    client.close();
-    return;
-  }
-  const dgUrl = 'wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true&punctuate=true&language=en';
-  const dg = new WebSocket(dgUrl, { headers: { Authorization: 'Token ' + key } });
-  let dgReady = false;
-  const queue = [];
-
-  dg.on('open', () => {
-    dgReady = true;
-    while (queue.length) dg.send(queue.shift());
-    try { client.send(JSON.stringify({ type: 'ready' })); } catch (e) {}
-  });
-  dg.on('message', (data) => {
-    try {
-      const msg = JSON.parse(data.toString());
-      const alt = msg.channel && msg.channel.alternatives && msg.channel.alternatives[0];
-      if (alt && typeof alt.transcript === 'string') {
-        client.send(JSON.stringify({ type: 'transcript', text: alt.transcript, final: !!msg.is_final }));
-      }
-    } catch (e) {}
-  });
-  dg.on('error', () => { try { client.send(JSON.stringify({ type: 'error', error: 'deepgram' })); } catch (e) {} });
-  dg.on('close', () => { try { client.close(); } catch (e) {} });
-
-  client.on('message', (data, isBinary) => {
-    if (!isBinary) {
-      // control messages from the browser (e.g. {type:'close'})
-      try { if (JSON.parse(data.toString()).type === 'close' && dgReady) dg.send(JSON.stringify({ type: 'CloseStream' })); } catch (e) {}
-      return;
-    }
-    if (dgReady) dg.send(data);
-    else queue.push(data);
-  });
-  client.on('close', () => { try { dg.close(); } catch (e) {} });
-});
+app.listen(PORT, () => console.log(`\n  Clara is running → http://localhost:${PORT}\n`));

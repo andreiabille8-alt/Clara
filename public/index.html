@@ -2298,8 +2298,8 @@ $('speakX').addEventListener('click',()=>$('speak').classList.remove('show'));
    Prefers server-side streaming STT (Deepgram) when available; falls back to the browser's Web Speech engine. */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,listening=false,finalText='',engine='webspeech';
-let sttAvailable=false;
-fetch('/api/stt-status').then(r=>r.json()).then(d=>{ sttAvailable=!!(d&&d.available); }).catch(()=>{});
+let sttAvailable=false,sttRelayUrl=null;
+fetch('/api/stt-status').then(r=>r.json()).then(d=>{ sttAvailable=!!(d&&d.available); sttRelayUrl=d&&d.url||null; }).catch(()=>{});
 if(SR){ rec=new SR(); rec.continuous=true; rec.interimResults=true; rec.lang='en-US';
   rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalText+=r[0].transcript+' ';else interim+=r[0].transcript;}$('interim').textContent=(finalText+interim).trim()||'listening…';};
   rec.onerror=()=>endVoice(); rec.onend=()=>{if(listening&&engine==='webspeech')finishVoice();};
@@ -2337,8 +2337,8 @@ function stopMicCapture(){
 let dgSocket=null,dgRecorder=null,dgFinal='';
 function startDeepgram(stream){
   engine='deepgram'; dgFinal='';
-  const proto=location.protocol==='https:'?'wss':'ws';
-  dgSocket=new WebSocket(proto+'://'+location.host+'/api/stt');
+  const base=sttRelayUrl||(location.protocol==='https:'?'wss':'ws')+'://'+location.host;
+  dgSocket=new WebSocket(base.replace(/\/$/,'')+'/api/stt');
   dgSocket.binaryType='arraybuffer';
   dgSocket.onmessage=ev=>{
     let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
