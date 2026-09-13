@@ -78,8 +78,9 @@
   .head h1{font-family:var(--serif);font-weight:500;font-size:22px;letter-spacing:-.01em;margin:0}
   .head .date{color:var(--faint);font-size:12.5px}
 
-  .interim{font-family:var(--serif);font-size:13px;color:rgba(26,26,28,.45);padding:0 4px 8px;line-height:1.5}
+  .interim{font-family:var(--serif);font-size:13px;color:rgba(26,26,28,.45);padding:0 4px 8px;line-height:1.5;opacity:1;transition:opacity .28s ease}
   .interim:empty{display:none;padding:0}
+  .interim.fading{opacity:0}
 
   /* home hero (Granola-style centered start) */
   #view-home{display:flex;flex-direction:column;justify-content:center;min-height:100%}
@@ -2380,7 +2381,15 @@ async function startVoice(){
   else if(!stream){ endVoice(); $('composerInput').focus(); }
 }
 function endVoice(){ listening=false;$('mic').classList.remove('live'); stopDeepgram(); stopMicCapture(); }
-function finishVoice(){ const txt=finalText.trim(); endVoice(); $('interim').textContent=''; if(txt){ const inp=$('composerInput'); inp.value=(inp.value?inp.value.trim()+' ':'')+txt; inp.focus(); autoGrow(); } }
+function finishVoice(){
+  const txt=finalText.trim(); endVoice();
+  const el=$('interim');
+  el.classList.add('fading');
+  setTimeout(()=>{
+    el.textContent=''; el.classList.remove('fading');
+    if(txt){ const inp=$('composerInput'); inp.value=(inp.value?inp.value.trim()+' ':'')+txt; inp.focus(); autoGrow(); }
+  }, 280);
+}
 $('mic').addEventListener('click',()=>{
   if(listening){ listening=false; if(engine==='webspeech'){ try{ rec&&rec.stop(); }catch(e){} } finishVoice(); }
   else startVoice();
