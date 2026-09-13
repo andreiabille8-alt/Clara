@@ -1,6 +1,5 @@
 // Clara — tiny server. Serves the app and keeps your Anthropic key off the browser.
 const express = require('express');
-const fs = require('fs').promises;
 const path = require('path');
 const WebSocket = require('ws');
 require('dotenv').config();
@@ -9,34 +8,36 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const DATA_DIR = path.join(__dirname, 'data');
-const STORE_FILE = path.join(DATA_DIR, 'store.json');
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function validKey(k) {
   // Legacy echo: storage prefix is intentionally unchanged so existing data remains reachable.
   return typeof k === 'string' && /^echo:[a-z]+$/.test(k);
 }
 
-async function readStore() {
-  try {
-    return JSON.parse(await fs.readFile(STORE_FILE, 'utf8'));
-  } catch (e) {
-    if (e.code === 'ENOENT') return {};
-    throw e;
-  }
-}
-
-async function writeStore(store) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STORE_FILE, JSON.stringify(store, null, 2), 'utf8');
+function supabaseHeaders(extra) {
+  return {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    ...extra,
+  };
 }
 
 app.get('/api/store', async (req, res) => {
   const key = req.query.key;
   if (!validKey(key)) return res.status(400).json({ error: 'Invalid key' });
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: 'Missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY — copy .env.example to .env and add them.' });
+  }
   try {
-    const store = await readStore();
-    res.json({ value: store[key] ?? null });
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/kv_store?key=eq.${encodeURIComponent(key)}&select=value`,
+      { headers: supabaseHeaders() }
+    );
+    if (!r.ok) return res.status(502).json({ error: await r.text() });
+    const rows = await r.json();
+    res.json({ value: rows[0]?.value ?? null });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
@@ -46,10 +47,16 @@ app.put('/api/store', async (req, res) => {
   const { key, value } = req.body || {};
   if (!validKey(key)) return res.status(400).json({ error: 'Invalid key' });
   if (typeof value !== 'string') return res.status(400).json({ error: 'Value must be a string' });
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: 'Missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY — copy .env.example to .env and add them.' });
+  }
   try {
-    const store = await readStore();
-    store[key] = value;
-    await writeStore(store);
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/kv_store?on_conflict=key`, {
+      method: 'POST',
+      headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify([{ key, value }]),
+    });
+    if (!r.ok) return res.status(502).json({ error: await r.text() });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: String(e) });
