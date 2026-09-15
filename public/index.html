@@ -309,6 +309,8 @@
   body:has(.app.sidebar-pinned) .sidebar-toggle{background:#2a2a2e;color:#fff;border-color:#2a2a2e}
   body:has(.app.has-journal) .sidebar-toggle{display:inline-flex}
   .sidebar-toggle svg{width:16px;height:16px;pointer-events:none}
+  .mobile-nav-toggle,.mobile-nav-scrim{display:none}
+  .mobile-nav-toggle svg{width:18px;height:18px;pointer-events:none}
   .journal-date{color:var(--faint);font-size:var(--type);white-space:nowrap}
   .journal-save{color:var(--faint);font-size:12px;margin-left:auto}
   .journal-save.saved{color:var(--ok)}
@@ -364,13 +366,28 @@
   }
   @media (max-width:760px){
     .app,.app.has-journal,.app.has-journal.sidebar-open,.app.has-journal.chat-open{grid-template-columns:1fr;padding-left:0}
-    .sidebar,.sidebar-toggle,.clara-bot{display:none !important}
+    .sidebar-toggle,.clara-bot{display:none !important}
     /* one view full-screen at a time: home/thoughts, or the entry editor, or entry chat */
     .app.has-journal .main{display:none}
     .app.has-journal.chat-open .main{display:flex;opacity:1;visibility:visible;pointer-events:auto}
     .app.has-journal.chat-open .journal{display:none}
     .main-scroll,.composer{padding-left:16px;padding-right:16px}
+    .main-scroll,.app.has-journal .main-scroll{padding-top:calc(58px + env(safe-area-inset-top))}
+    .journal-bar{padding-top:calc(58px + env(safe-area-inset-top))}
     :root{--journal-inset:16px}
+
+    /* hamburger menu: sidebar becomes a slide-in drawer, available from any view */
+    .mobile-nav-toggle{display:flex;align-items:center;justify-content:center;position:fixed;top:calc(10px + env(safe-area-inset-top));left:12px;width:40px;height:40px;border-radius:9px;border:1px solid var(--border-2);background:var(--bg);color:var(--muted);z-index:110}
+    .mobile-nav-scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:95;opacity:0;pointer-events:none;transition:opacity 200ms ease-out}
+    .app.sidebar-open .mobile-nav-scrim{opacity:1;pointer-events:auto}
+    .app .sidebar,.app.has-journal .sidebar{
+      display:flex;opacity:1;visibility:visible;pointer-events:auto;
+      position:fixed;top:0;left:0;bottom:0;width:min(82vw,300px);z-index:100;
+      transform:translateX(-100%);transition:transform 220ms ease-out;
+      padding-top:calc(14px + env(safe-area-inset-top));
+      padding-bottom:calc(14px + env(safe-area-inset-bottom));
+    }
+    .app.sidebar-open .sidebar{transform:translateX(0)}
 
     /* iOS Safari zooms the page on focus of any text input under 16px — keep these at 16px */
     #searchInput,#nameInput,#composerInput,.scan-answer-input{font-size:16px}
@@ -386,6 +403,10 @@
 </head>
 <body>
 <div class="app">
+  <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open menu" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="mobile-nav-scrim" id="mobileNavScrim"></div>
   <aside class="sidebar">
     <div class="brand"><span class="glyph">C</span> Clara</div>
     <div class="search">
@@ -2277,6 +2298,19 @@ document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.addEventListener(
       app.classList.remove('sidebar-open');
     }
   });
+})();
+
+/* mobile hamburger menu — same sidebar, slide-in drawer, works from any view */
+(function bindMobileNav(){
+  const app=document.querySelector('.app');
+  const toggle=$('mobileNavToggle');
+  const scrim=$('mobileNavScrim');
+  if(!toggle||!scrim)return;
+  function close(){ app.classList.remove('sidebar-open'); toggle.setAttribute('aria-expanded','false'); }
+  function open(){ app.classList.add('sidebar-open'); toggle.setAttribute('aria-expanded','true'); }
+  toggle.addEventListener('click',()=>{ app.classList.contains('sidebar-open')?close():open(); });
+  scrim.addEventListener('click',close);
+  document.querySelector('.sidebar').addEventListener('click',e=>{ if(e.target.closest('.nav-item[data-view]')) close(); });
 })();
 $('claraBot').addEventListener('click',()=>{
   if(!inEntry) return;
