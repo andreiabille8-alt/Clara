@@ -2609,6 +2609,14 @@ function contentCaretBox(root){
   if(rect&&(rect.height||rect.width)) return {left:rect.left, top:rect.top, height:rect.height||lh};
   const rects=range.getClientRects();
   if(rects.length){ const r=rects[0]; return {left:r.left, top:r.top, height:r.height||lh}; }
+  // a genuinely empty line reports no rect at all from the range (browser quirk) —
+  // the containing block element still has the correct position for that line, so
+  // use that instead of falling all the way back to the editor's own top-left corner.
+  const lineEl=(node.nodeType===1?node:node.parentElement);
+  if(lineEl&&lineEl!==root){
+    const lr=lineEl.getBoundingClientRect();
+    if(lr&&(lr.height||lr.width)) return {left:lr.left, top:lr.top, height:lr.height||lh};
+  }
   const cs=getComputedStyle(root); const br=root.getBoundingClientRect();
   return {left:br.left+parseFloat(cs.paddingLeft), top:br.top+parseFloat(cs.paddingTop), height:lh};
 }
