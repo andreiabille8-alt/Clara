@@ -1680,8 +1680,8 @@ function dayLabel(ts){ const d=new Date(ts),n=new Date(); const same=(a,b)=>a.to
 function timeStr(ts){ return new Date(ts).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
 
 async function migrateKey(k){ let v=await storeGet(k); if(v==null){ try{ const old=localStorage.getItem(k); if(old!=null){ await storeSet(k,old); v=old; } }catch(e){} } return v; }
-async function loadState(){
-  const a=await migrateKey('echo:thoughts'); if(a){try{state.thoughts=JSON.parse(a);}catch(e){}}
+function applyLoadedThoughts(a){
+  if(a){try{state.thoughts=JSON.parse(a);}catch(e){}}
   let threadRolesMigrated=false;
   state.thoughts.forEach(t=>{
     ensureStoryFields(t, false);
@@ -1690,22 +1690,58 @@ async function loadState(){
       if(m.role==='echo'){ m.role='clara'; threadRolesMigrated=true; }
     });
   });
-  if(threadRolesMigrated)await storeSet('echo:thoughts',JSON.stringify(state.thoughts));
-  const p=await migrateKey('echo:profile'); if(p) state.profile=p;
-  const i=await migrateKey('echo:interactions'); if(i){try{state.interactions=JSON.parse(i);}catch(e){}}
+  return threadRolesMigrated;
+}
+function applyLoadedRest(p,i,f,pc){
+  if(p) state.profile=p;
+  if(i){try{state.interactions=JSON.parse(i);}catch(e){}}
   if(!Array.isArray(state.interactions))state.interactions=[];
   state.interactions=state.interactions
     .map(item=>typeof item==='string'?{text:item,ts:0}:item)
     .filter(item=>interactionText(item).trim())
     .sort((a,b)=>(b.ts||0)-(a.ts||0))
     .slice(0,15);
-  const f=await migrateKey('echo:folders'); if(f){try{state.folders=JSON.parse(f);}catch(e){}}
-  const pc=await migrateKey('echo:pieces'); if(pc){try{state.pieces=JSON.parse(pc);}catch(e){}}
-  micId=(await storeGet('echo:mic'))||''; spkId=(await storeGet('echo:speaker'))||'';
-  userName=(await storeGet('echo:name'))||'';
-  $('storeNote').textContent = 'synced to this project';
+  if(f){try{state.folders=JSON.parse(f);}catch(e){}}
+  if(pc){try{state.pieces=JSON.parse(pc);}catch(e){}}
+}
+function paintState(){
   $('nameInput').value=userName;
   renderGreeting(); renderFolders(); renderLabels(); renderStream(); renderRecents(); renderProfile();
+}
+async function loadState(){
+  const lastEditAt=Number(localStorage.getItem('echo:lastEditAt')||0);
+  const justEdited=Date.now()-lastEditAt<4000;
+  const hasLocalCache=localStorage.getItem('echo:thoughts')!=null;
+
+  if(hasLocalCache){
+    applyLoadedThoughts(localStorage.getItem('echo:thoughts'));
+    applyLoadedRest(localStorage.getItem('echo:profile'),localStorage.getItem('echo:interactions'),localStorage.getItem('echo:folders'),localStorage.getItem('echo:pieces'));
+    micId=localStorage.getItem('echo:mic')||''; spkId=localStorage.getItem('echo:speaker')||'';
+    userName=localStorage.getItem('echo:name')||'';
+    $('storeNote').textContent = 'synced to this project';
+    paintState();
+    // just edited on this device a moment ago — trust the local write, skip the round trip
+    // so a fast refresh can't race an in-flight save and show stale data.
+    if(justEdited) return;
+  }
+
+  const [a,p,i,f,pc,mic,spk,name]=await Promise.all([
+    migrateKey('echo:thoughts'),
+    migrateKey('echo:profile'),
+    migrateKey('echo:interactions'),
+    migrateKey('echo:folders'),
+    migrateKey('echo:pieces'),
+    storeGet('echo:mic'),
+    storeGet('echo:speaker'),
+    storeGet('echo:name'),
+  ]);
+  const threadRolesMigrated=applyLoadedThoughts(a);
+  if(threadRolesMigrated)await storeSet('echo:thoughts',JSON.stringify(state.thoughts));
+  applyLoadedRest(p,i,f,pc);
+  micId=mic||''; spkId=spk||'';
+  userName=name||'';
+  $('storeNote').textContent = 'synced to this project';
+  paintState();
 }
 let userName='';
 function renderGreeting(){
@@ -1713,11 +1749,12 @@ function renderGreeting(){
   $('homeGreeting').textContent = n ? `Hey ${n}, what's on your mind?` : `Hey, what's on your mind?`;
   $('pfp').textContent = (n ? n[0] : 'A').toUpperCase();
 }
-const saveThoughts=()=>storeSet('echo:thoughts',JSON.stringify(state.thoughts));
-const saveProfile=()=>storeSet('echo:profile',state.profile);
-const saveInteractions=()=>storeSet('echo:interactions',JSON.stringify(state.interactions));
-const saveFolders=()=>storeSet('echo:folders',JSON.stringify(state.folders));
-const savePieces=()=>storeSet('echo:pieces',JSON.stringify(state.pieces));
+function markLocalEdit(k,v){ try{ localStorage.setItem(k,v); localStorage.setItem('echo:lastEditAt',String(Date.now())); }catch(e){} }
+const saveThoughts=()=>{ const j=JSON.stringify(state.thoughts); markLocalEdit('echo:thoughts',j); storeSet('echo:thoughts',j); };
+const saveProfile=()=>{ markLocalEdit('echo:profile',state.profile||''); storeSet('echo:profile',state.profile); };
+const saveInteractions=()=>{ const j=JSON.stringify(state.interactions); markLocalEdit('echo:interactions',j); storeSet('echo:interactions',j); };
+const saveFolders=()=>{ const j=JSON.stringify(state.folders); markLocalEdit('echo:folders',j); storeSet('echo:folders',j); };
+const savePieces=()=>{ const j=JSON.stringify(state.pieces); markLocalEdit('echo:pieces',j); storeSet('echo:pieces',j); };
 function createFolder(name){ const f={id:'f'+Date.now()+Math.random().toString(36).slice(2,5),name:name.trim()}; state.folders.push(f); saveFolders(); return f; }
 const folderIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 function renderFolders(){
@@ -2511,8 +2548,8 @@ async function requestAudioPerm(){
   catch(e){ $('audioHint').textContent='Mic access was denied — device names stay hidden until you allow it in the browser.'; }
 }
 function applySpeaker(){ if(!spkId)return; document.querySelectorAll('audio,video').forEach(el=>{ if(typeof el.setSinkId==='function') el.setSinkId(spkId).catch(()=>{}); }); }
-$('micSelect').addEventListener('change',e=>{ micId=e.target.value; storeSet('echo:mic',micId); });
-$('spkSelect').addEventListener('change',e=>{ spkId=e.target.value; storeSet('echo:speaker',spkId); applySpeaker(); });
+$('micSelect').addEventListener('change',e=>{ micId=e.target.value; markLocalEdit('echo:mic',micId); storeSet('echo:mic',micId); });
+$('spkSelect').addEventListener('change',e=>{ spkId=e.target.value; markLocalEdit('echo:speaker',spkId); storeSet('echo:speaker',spkId); applySpeaker(); });
 $('audioPerm').addEventListener('click',requestAudioPerm);
 if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener){ navigator.mediaDevices.addEventListener('devicechange',()=>{ if(currentView==='settings') loadAudioDevices(); }); }
 
@@ -2560,7 +2597,7 @@ $('testSpk').addEventListener('click',testSpeaker);
 $('testMic').addEventListener('click',testMic);
 
 /* settings: name */
-$('nameInput').addEventListener('input',e=>{ userName=e.target.value; storeSet('echo:name',userName.trim()); renderGreeting(); });
+$('nameInput').addEventListener('input',e=>{ userName=e.target.value; markLocalEdit('echo:name',userName.trim()); storeSet('echo:name',userName.trim()); renderGreeting(); });
 
 $('entryTitle').addEventListener('input',()=>{ sizeTitle(); scheduleJournalSave(); placeJournalCaret(true); });
 $('entryTitle').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('entryBody').focus(); } });
