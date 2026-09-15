@@ -1296,6 +1296,15 @@ function formatEntryDate(ts){
   return new Date(ts).toLocaleString(undefined,{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
 }
 function readEntryBody(){ return (($('entryBody')&&$('entryBody').innerText)||'').replace(/\u00a0/g,' '); }
+// Tab/Shift+Tab in a text field with no handler falls back to the browser's default
+// focus-navigation, jumping out of the entry entirely (looked like the caret "teleporting"
+// to the top-left sidebar). Keep focus in the entry instead; plain Tab inserts a tab.
+function trapTabKey(e){
+  if(e.key!=='Tab') return;
+  e.preventDefault();
+  if(e.shiftKey) return;
+  document.execCommand('insertText', false, '\t');
+}
 function setEntryBodyPlain(text){ const el=$('entryBody'); if(!el)return; el.textContent=text||''; }
 function newJournalEntry(){
   const now=Date.now();
@@ -2565,8 +2574,9 @@ $('testMic').addEventListener('click',testMic);
 $('nameInput').addEventListener('input',e=>{ userName=e.target.value; markLocalEdit('echo:name',userName.trim()); storeSet('echo:name',userName.trim()); renderGreeting(); });
 
 $('entryTitle').addEventListener('input',()=>{ sizeTitle(); scheduleJournalSave(); placeJournalCaret(true); });
-$('entryTitle').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('entryBody').focus(); } });
+$('entryTitle').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('entryBody').focus(); } else trapTabKey(e); });
 $('entryBody').addEventListener('input',()=>{ scheduleJournalSave(); placeJournalCaret(true); });
+$('entryBody').addEventListener('keydown',trapTabKey);
 $('entryNew').addEventListener('click',startNewEntry);
 $('entriesNew').addEventListener('click',startNewEntry);
 $('entryScan').addEventListener('click',runJournalScan);
