@@ -36,16 +36,27 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:var(--type);line-height:var(--leading);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent}
   button,[role="button"]{-webkit-tap-highlight-color:transparent}
-  .app{display:grid;grid-template-columns:var(--sb-w) 1fr;height:100vh;height:100dvh;position:relative}
+  .app{display:grid;grid-template-columns:var(--sb-w) 1fr;height:100vh;height:100dvh;position:relative;transition:grid-template-columns 180ms ease-out}
   .app.has-journal{grid-template-columns:var(--sb-w) minmax(0,1fr);overflow-x:hidden}
   .app.has-journal.chat-open{grid-template-columns:var(--sb-w) minmax(0,1fr) minmax(260px,400px)}
+  .app.sidebar-collapsed{grid-template-columns:0px 1fr}
+  .app.has-journal.sidebar-collapsed{grid-template-columns:0px minmax(0,1fr)}
+  .app.has-journal.chat-open.sidebar-collapsed{grid-template-columns:0px minmax(0,1fr) minmax(260px,400px)}
   .app.has-journal .main{min-width:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 180ms ease-out,visibility 0s linear 180ms}
   .app.has-journal.chat-open .main{opacity:1;visibility:visible;pointer-events:auto;transition:opacity 180ms ease-out,visibility 0s}
   .app.has-journal .journal{border-right-color:transparent}
   .app.has-journal.chat-open .journal{border-right-color:var(--border)}
 
-  /* sidebar — a permanent column on every view, entry or not */
-  .sidebar{background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 12px;overflow-y:auto;min-width:0}
+  /* sidebar — a permanent column on every view, entry or not, until manually collapsed */
+  .sidebar{background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 12px;overflow-y:auto;min-width:0;opacity:1;transition:opacity 140ms ease-out}
+  .app.sidebar-collapsed .sidebar{opacity:0;visibility:hidden;pointer-events:none}
+  .sidebar-collapse{margin-left:auto;background:none;border:none;color:var(--faint);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .sidebar-collapse:hover{color:var(--text);background:var(--card)}
+  .sidebar-collapse svg{width:15px;height:15px;pointer-events:none}
+  .sidebar-expand{display:none;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--muted);cursor:pointer;position:fixed;top:14px;left:14px;z-index:80;transition:background .18s ease-out,color .18s ease-out,border-color .18s ease-out}
+  .sidebar-expand:hover{color:var(--text);border-color:var(--border-2);background:var(--card)}
+  .app.sidebar-collapsed .sidebar-expand{display:inline-flex}
+  .sidebar-expand svg{width:16px;height:16px;pointer-events:none}
   .brand{font-family:var(--serif);font-size:20px;font-weight:500;padding:6px 8px 14px;display:flex;align-items:center;gap:8px}
   .brand .glyph{width:22px;height:22px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent-line);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px}
   .search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin-bottom:14px;color:var(--faint)}
@@ -353,7 +364,7 @@
   }
   @media (max-width:760px){
     .app,.app.has-journal,.app.has-journal.sidebar-open,.app.has-journal.chat-open{grid-template-columns:1fr;padding-left:0}
-    .clara-bot{display:none !important}
+    .clara-bot,.sidebar-collapse,.sidebar-expand{display:none !important}
     /* one view full-screen at a time: home/thoughts, or the entry editor, or entry chat */
     .app.has-journal .main{display:none}
     .app.has-journal.chat-open .main{display:flex;opacity:1;visibility:visible;pointer-events:auto}
@@ -394,8 +405,11 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
   <div class="mobile-nav-scrim" id="mobileNavScrim"></div>
+  <button class="sidebar-expand" id="sidebarExpand" type="button" aria-label="Show sidebar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+  </button>
   <aside class="sidebar">
-    <div class="brand"><span class="glyph">C</span> Clara</div>
+    <div class="brand"><span class="glyph">C</span> Clara<button class="sidebar-collapse" id="sidebarCollapse" type="button" aria-label="Hide sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button></div>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input id="searchInput" placeholder="Search   ⌘K" autocomplete="off" />
@@ -2286,6 +2300,15 @@ document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.addEventListener(
   if(n.dataset.view==='home') inEntry=false;
   showView(n.dataset.view);
 }));
+
+/* desktop sidebar collapse/expand — manual only, always defaults open (including on an entry) */
+(function bindSidebarCollapse(){
+  const app=document.querySelector('.app');
+  const collapseBtn=$('sidebarCollapse');
+  const expandBtn=$('sidebarExpand');
+  collapseBtn.addEventListener('click',()=>app.classList.add('sidebar-collapsed'));
+  expandBtn.addEventListener('click',()=>app.classList.remove('sidebar-collapsed'));
+})();
 
 /* mobile hamburger menu — same sidebar, slide-in drawer, works from any view */
 (function bindMobileNav(){
