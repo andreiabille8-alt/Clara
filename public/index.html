@@ -1278,8 +1278,16 @@ async function hydrateEntriesFromServer(){
         if(raw) localStorage.setItem(entryKey(id),raw);
       }
     }
-    const merged=[...new Set([...remoteIds,...listEntryIds()])].slice(0,40);
+    const localIds=listEntryIds();
+    const merged=[...new Set([...remoteIds,...localIds])].slice(0,40);
     localStorage.setItem('echo:entries',JSON.stringify(merged));
+    storeSet('echo:entries',JSON.stringify(merged));
+    // re-push every local entry's content: heals writes that got dropped last
+    // time (e.g. the tab backgrounded mid-request before storeSet finished).
+    for(const id of localIds){
+      const raw=localStorage.getItem(entryKey(id));
+      if(raw) storeSet(entryKey(id),raw);
+    }
     if(!localStorage.getItem('echo:entry:current')){
       const remoteCurrent=await storeGet('echo:entry:current');
       if(remoteCurrent) localStorage.setItem('echo:entry:current',remoteCurrent);
