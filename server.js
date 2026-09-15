@@ -12,7 +12,8 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function validKey(k) {
   // Legacy echo: storage prefix is intentionally unchanged so existing data remains reachable.
-  return typeof k === 'string' && /^echo:[a-z]+$/.test(k);
+  // Journal entries add one extra segment: echo:entry:current or echo:entry:<id>.
+  return typeof k === 'string' && (/^echo:[a-z]+$/.test(k) || /^echo:entry:(current|[a-z0-9]+)$/.test(k));
 }
 
 function supabaseHeaders(extra) {
@@ -54,6 +55,24 @@ app.put('/api/store', async (req, res) => {
       method: 'POST',
       headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify([{ key, value }]),
+    });
+    if (!r.ok) return res.status(502).json({ error: await r.text() });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.delete('/api/store', async (req, res) => {
+  const key = req.query.key;
+  if (!validKey(key)) return res.status(400).json({ error: 'Invalid key' });
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: 'Missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY — copy .env.example to .env and add them.' });
+  }
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/kv_store?key=eq.${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+      headers: supabaseHeaders(),
     });
     if (!r.ok) return res.status(502).json({ error: await r.text() });
     res.json({ ok: true });

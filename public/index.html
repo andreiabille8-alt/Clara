@@ -887,6 +887,7 @@ const firstSentence = t => { const m=(t||'').trim().match(/^.*?[.!?](\s|$)/); re
 
 async function storeGet(k){ try{ const r=await fetch('/api/store?key='+encodeURIComponent(k)); if(!r.ok)return null; const d=await r.json(); return d.value??null; }catch(e){return null;} }
 async function storeSet(k,v){ try{ const r=await fetch('/api/store',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})}); if(!r.ok){ console.warn('storeSet failed',k,r.status); return false; } return true; }catch(e){ console.error('storeSet error',k,e); return false; } }
+async function storeDelete(k){ try{ const r=await fetch('/api/store?key='+encodeURIComponent(k),{method:'DELETE'}); return r.ok; }catch(e){ return false; } }
 
 async function callClaude(system,userOrMessages,opts){
   const messages=Array.isArray(userOrMessages)
@@ -1207,15 +1208,44 @@ function loadEntry(id){
     return e;
   }catch(e){ return null; }
 }
-function saveEntryRecord(entry){ localStorage.setItem(entryKey(entry.id),JSON.stringify(entry)); localStorage.setItem('echo:entry:current',entry.id); }
+function saveEntryRecord(entry){
+  const json=JSON.stringify(entry);
+  localStorage.setItem(entryKey(entry.id),json);
+  localStorage.setItem('echo:entry:current',entry.id);
+  storeSet(entryKey(entry.id),json);
+  storeSet('echo:entry:current',entry.id);
+}
 function listEntryIds(){ try{ const a=JSON.parse(localStorage.getItem('echo:entries')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function rememberEntryId(id){
   const ids=listEntryIds().filter(x=>x!==id);
   ids.unshift(id);
-  localStorage.setItem('echo:entries',JSON.stringify(ids.slice(0,40)));
+  const capped=ids.slice(0,40);
+  localStorage.setItem('echo:entries',JSON.stringify(capped));
+  storeSet('echo:entries',JSON.stringify(capped));
 }
 function forgetEntryId(id){
-  localStorage.setItem('echo:entries',JSON.stringify(listEntryIds().filter(x=>x!==id)));
+  const ids=listEntryIds().filter(x=>x!==id);
+  localStorage.setItem('echo:entries',JSON.stringify(ids));
+  storeSet('echo:entries',JSON.stringify(ids));
+}
+async function hydrateEntriesFromServer(){
+  try{
+    const remoteRaw=await storeGet('echo:entries');
+    const remoteIds=remoteRaw?JSON.parse(remoteRaw):[];
+    if(!Array.isArray(remoteIds))return;
+    for(const id of remoteIds){
+      if(!localStorage.getItem(entryKey(id))){
+        const raw=await storeGet(entryKey(id));
+        if(raw) localStorage.setItem(entryKey(id),raw);
+      }
+    }
+    const merged=[...new Set([...remoteIds,...listEntryIds()])].slice(0,40);
+    localStorage.setItem('echo:entries',JSON.stringify(merged));
+    if(!localStorage.getItem('echo:entry:current')){
+      const remoteCurrent=await storeGet('echo:entry:current');
+      if(remoteCurrent) localStorage.setItem('echo:entry:current',remoteCurrent);
+    }
+  }catch(e){}
 }
 function formatEntryDate(ts){
   return new Date(ts).toLocaleString(undefined,{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
@@ -1266,13 +1296,15 @@ function scheduleJournalSave(){
   clearTimeout(entrySaveTimer);
   entrySaveTimer=setTimeout(()=>persistJournal('saved'),400);
 }
-function bootJournal(){
+async function bootJournal(){
+  await hydrateEntriesFromServer();
   const cur=localStorage.getItem('echo:entry:current');
   currentEntry=(cur&&loadEntry(cur))||newJournalEntry();
   if(!loadEntry(currentEntry.id)) saveEntryRecord(currentEntry);
   rememberEntryId(currentEntry.id);
   paintJournal();
   inEntry=!!((currentEntry.title||'').trim()||(currentEntry.body||'').trim());
+  renderEntryList();
 }
 function entryPreview(e){
   const title=(e.title||'').trim();
@@ -1293,12 +1325,13 @@ function deleteJournalEntry(id){
   if(!confirm('Are you sure you want to delete "'+name+'"? This cannot be undone.')) return;
   clearTimeout(entrySaveTimer);
   localStorage.removeItem(entryKey(id));
+  storeDelete(entryKey(id));
   forgetEntryId(id);
   const wasOpen=inEntry && currentEntry && currentEntry.id===id;
   if(localStorage.getItem('echo:entry:current')===id){
     const next=listEntryIds()[0];
-    if(next) localStorage.setItem('echo:entry:current',next);
-    else localStorage.removeItem('echo:entry:current');
+    if(next){ localStorage.setItem('echo:entry:current',next); storeSet('echo:entry:current',next); }
+    else{ localStorage.removeItem('echo:entry:current'); storeDelete('echo:entry:current'); }
   }
   if(wasOpen){
     inEntry=false;
@@ -1316,6 +1349,7 @@ function openJournalEntry(id){
   if(!e)return;
   currentEntry=e;
   localStorage.setItem('echo:entry:current',id);
+  storeSet('echo:entry:current',id);
   lastScanSource='';
   scanEditingKey='';
   paintJournal();
