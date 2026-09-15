@@ -2609,6 +2609,20 @@ function contentCaretBox(root){
   if(rect&&(rect.height||rect.width)) return {left:rect.left, top:rect.top, height:rect.height||lh};
   const rects=range.getClientRects();
   if(rects.length){ const r=rects[0]; return {left:r.left, top:r.top, height:r.height||lh}; }
+  // right after a <br> (Shift+Enter soft line break, or the last line of the entry)
+  // the range often reports no rect at all — this editor is a flat contenteditable
+  // (text + <br>s directly in the root, no per-line wrapper elements), so the
+  // "containing block" fallback below just resolves to the whole editor. Use the
+  // <br>'s own rect instead: its bottom edge is the top of the new line.
+  const c=range.startContainer, o=range.startOffset;
+  const prevNode=c.nodeType===3 ? (o===0?c.previousSibling:null) : c.childNodes[o-1];
+  if(prevNode&&prevNode.nodeName==='BR'){
+    const brRect=prevNode.getBoundingClientRect();
+    if(brRect&&(brRect.width||brRect.height)){
+      const cs=getComputedStyle(root); const rr=root.getBoundingClientRect();
+      return {left:rr.left+parseFloat(cs.paddingLeft), top:brRect.bottom, height:brRect.height||lh};
+    }
+  }
   // a genuinely empty line reports no rect at all from the range (browser quirk) —
   // the containing block element still has the correct position for that line, so
   // use that instead of falling all the way back to the editor's own top-left corner.
