@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Clara" />
+<meta name="theme-color" content="#ffffff" />
 <title>Clara</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -34,8 +38,9 @@
     --toggle-gap:10px;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:var(--type);line-height:var(--leading);-webkit-font-smoothing:antialiased}
-  .app{display:grid;grid-template-columns:230px 1fr;height:100vh;position:relative}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:var(--type);line-height:var(--leading);-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent}
+  button,[role="button"]{-webkit-tap-highlight-color:transparent}
+  .app{display:grid;grid-template-columns:230px 1fr;height:100vh;height:100dvh;position:relative}
   .app.has-journal{grid-template-columns:minmax(0,1fr) 0px;padding-left:0;overflow-x:hidden;transition:padding-left var(--sb-fade),grid-template-columns 220ms ease-out}
   .app.has-journal.chat-open{grid-template-columns:minmax(0,1fr) minmax(260px,400px)}
   .app.has-journal .main{min-width:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 180ms ease-out,visibility 0s linear 180ms}
@@ -70,8 +75,8 @@
   .sb-bottom .pfp{width:26px;height:26px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 
   /* main */
-  .main{display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
-  .main-scroll{flex:1;overflow-y:auto;padding:26px 24px 20px}
+  .main{display:flex;flex-direction:column;min-width:0;height:100vh;height:100dvh;overflow:hidden}
+  .main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:26px 24px 20px}
   .main-scroll{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent}
   .main-scroll > section{max-width:720px;margin:0 auto;width:100%}
   .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px}
@@ -264,7 +269,7 @@
   .mind .sub{color:var(--faint);font-size:13.5px;margin:-12px 0 18px}
 
   /* composer */
-  .composer{flex:0 0 auto;border-top:1px solid var(--border);background:var(--bg);padding:12px 24px}
+  .composer{flex:0 0 auto;border-top:1px solid var(--border);background:var(--bg);padding:12px 24px calc(12px + env(safe-area-inset-bottom))}
   .composer-inner{max-width:720px;margin:0 auto}
   .composer.in-conversation .composer-inner{max-width:none}
   .composer-row{display:flex;flex-direction:row;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 14px}
@@ -286,7 +291,7 @@
   :focus-visible{outline:2px solid var(--accent-line);outline-offset:2px;border-radius:4px}
 
   /* journal editor — center pane, most room */
-  .journal{display:none;flex-direction:column;min-width:0;height:100vh;border-right:1px solid var(--border);background:var(--bg);overflow:hidden;position:relative}
+  .journal{display:none;flex-direction:column;min-width:0;height:100vh;height:100dvh;border-right:1px solid var(--border);background:var(--bg);overflow:hidden;position:relative}
   .app.has-journal .journal{display:flex}
   .app.has-journal .main-scroll{padding:18px 16px 12px}
   .app.has-journal .main-scroll > section{max-width:none}
@@ -311,7 +316,7 @@
   .journal-btn:hover{border-color:var(--accent-line)}
   .journal-btn:disabled{opacity:.45;cursor:default}
   .journal-btn.danger:hover{color:#c45c5c;border-color:rgba(196,92,92,.45)}
-  .journal-scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:var(--border-2) transparent}
+  .journal-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:var(--border-2) transparent}
   .journal-title{width:100%;min-height:71px;border:none;outline:none;background:none;font-family:var(--substack);font-size:25.6px;font-weight:630;line-height:28.8px;letter-spacing:normal;word-spacing:0;color:#222;caret-color:transparent;padding-top:28px;padding-bottom:14px;resize:none;overflow:hidden;field-sizing:content;white-space:pre-wrap;word-break:break-word;flex:0 0 auto}
   .journal-title::placeholder{color:var(--faint);font-weight:630}
   .journal-rule{flex:0 0 auto;height:1px;background:rgba(0,0,0,.12);margin:0 max(var(--journal-inset),calc((100% - var(--journal-measure)) / 2))}
@@ -360,9 +365,22 @@
   @media (max-width:760px){
     .app,.app.has-journal,.app.has-journal.sidebar-open,.app.has-journal.chat-open{grid-template-columns:1fr;padding-left:0}
     .sidebar,.sidebar-toggle,.clara-bot{display:none !important}
-    .journal{display:none}
-    .app.has-journal .main,.app.has-journal.chat-open .main{opacity:1;visibility:visible;pointer-events:auto}
+    /* one view full-screen at a time: home/thoughts, or the entry editor, or entry chat */
+    .app.has-journal .main{display:none}
+    .app.has-journal.chat-open .main{display:flex;opacity:1;visibility:visible;pointer-events:auto}
+    .app.has-journal.chat-open .journal{display:none}
     .main-scroll,.composer{padding-left:16px;padding-right:16px}
+    :root{--journal-inset:16px}
+
+    /* iOS Safari zooms the page on focus of any text input under 16px — keep these at 16px */
+    #searchInput,#nameInput,#composerInput,.scan-answer-input{font-size:16px}
+
+    /* touch targets: Apple HIG wants ~44px hit areas */
+    .rec{width:44px;height:44px}
+    .journal-btn{padding:9px 14px;min-height:40px}
+    .r-del{padding:8px 10px;min-height:36px}
+    .entry-chat-close{padding:10px;font-size:24px}
+    .send{padding:10px}
   }
 </style>
 </head>
