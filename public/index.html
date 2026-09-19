@@ -1291,10 +1291,13 @@ const LAYER_LINE={
 };
 
 // Shareable card: the card's opening line must be safe to post publicly —
-// never a line that cost the writer something. "generic" is the only layer
-// the scan grades as zero-vulnerability ("anyone could have written this
-// line"), so that's what counts as a card-safe span.
-const CARD_SAFE_LAYER='generic';
+// never a line that cost the writer something. "generic" (anyone could
+// have written this) and "guarded" (hedged/softened, not a raw admission)
+// are the two layers that don't expose or cost the writer anything;
+// "exposed" and "unbacked" stay off-limits. generic alone was too rare in
+// practice — the scan's problem/pursuit/payoff extraction is instructed to
+// find MEANINGFUL lines, so it almost never grades one plain "generic."
+const CARD_SAFE_LAYERS=['generic','guarded'];
 function getLatestScanMessage(entry){
   if(!entry||!Array.isArray(entry.thread))return null;
   let found=null;
@@ -1312,7 +1315,7 @@ function getCardSafeSpans(scanMsg){
     .map(k=>Object.assign({slot:k},scanMsg.slots[k]||{}))
     .filter(s=>s.status==='found'
       && s.line
-      && String(s.layer||'').toLowerCase()===CARD_SAFE_LAYER
+      && CARD_SAFE_LAYERS.includes(String(s.layer||'').toLowerCase())
       && s.line.length<=CARD_SPAN_MAX_CHARS
       && isOneSentence(s.line)
       && isValidScanQuestion(s.question)); // defense in depth: never render a long question
