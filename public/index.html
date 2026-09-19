@@ -318,6 +318,21 @@
   .card-picker-item:hover{border-color:var(--accent-line)}
   .card-picker-item .cp-line{font-family:var(--serif);font-size:15px;color:var(--text);margin-bottom:6px;line-height:1.5}
   .card-picker-item .cp-q{font-size:12.5px;color:var(--faint)}
+
+  .card-frame{position:fixed;inset:0;background:rgba(20,20,22,.72);z-index:210;align-items:center;justify-content:center;padding:20px}
+  .card-frame-close{position:fixed;top:18px;right:18px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:20px;line-height:1;cursor:pointer;z-index:211}
+  .card-frame-close:hover{background:rgba(255,255,255,.22)}
+  .card-stage{position:relative;width:100%;max-width:960px;aspect-ratio:16/9;background:#D9D8D2;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:5%;box-sizing:border-box}
+  .share-card{width:100%;max-width:640px;background:#FCFBF7;border-radius:16px;padding:24px 28px 26px;box-shadow:0 18px 50px rgba(0,0,0,.45);box-sizing:border-box}
+  .sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+  .sc-header-left{display:flex;align-items:center;gap:8px;min-width:0}
+  .sc-icon{width:26px;height:26px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-family:var(--sans);font-weight:600;flex:0 0 auto}
+  .sc-title{font-family:var(--sans);font-size:17px;font-weight:700;letter-spacing:-0.012em;color:#15161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sc-time{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;letter-spacing:.06em;color:#83838A;flex:0 0 auto;margin-left:12px}
+  .sc-line{font-family:var(--journal-serif);font-size:19px;line-height:1.5;color:#A9A9AF;margin:0}
+  .sc-question-row{margin-top:24px;display:flex;align-items:center;gap:14px}
+  .sc-rule{flex:1;height:1px;background:#DEDDD7}
+  .sc-question{font-family:var(--journal-serif);font-size:19px;color:#3C3D44;white-space:nowrap}
   .journal-date{color:var(--faint);font-size:var(--type);white-space:nowrap}
   .journal-save{color:var(--faint);font-size:12px;margin-left:auto}
   .journal-save.saved{color:var(--ok)}
@@ -609,6 +624,26 @@
     <div class="card-picker-head">Pick the line to open with</div>
     <div class="card-picker-list" id="cardPickerList"></div>
     <button class="journal-btn" id="cardPickerCancel" type="button">Cancel</button>
+  </div>
+</div>
+<div class="card-frame" id="cardFrame" style="display:none">
+  <button class="card-frame-close" id="cardFrameClose" type="button" aria-label="Close">×</button>
+  <div class="card-stage">
+    <div class="share-card" id="shareCard">
+      <div class="sc-header">
+        <div class="sc-header-left">
+          <span class="sc-icon">C</span>
+          <span class="sc-title" id="scTitle"></span>
+        </div>
+        <span class="sc-time" id="scTime"></span>
+      </div>
+      <p class="sc-line" id="scLine"></p>
+      <div class="sc-question-row">
+        <span class="sc-rule"></span>
+        <span class="sc-question" id="scQuestion"></span>
+        <span class="sc-rule"></span>
+      </div>
+    </div>
   </div>
 </div>
 <button class="clara-bot" id="claraBot" type="button" aria-label="Talk with Clara" aria-pressed="false">
@@ -2625,10 +2660,18 @@ $('entryBody').addEventListener('keydown',trapTabKey);
 $('entryNew').addEventListener('click',startNewEntry);
 $('entriesNew').addEventListener('click',startNewEntry);
 $('entryScan').addEventListener('click',runJournalScan);
+function closeCardFrame(){ $('cardFrame').style.display='none'; }
 function logCardChoice(chosen){
+  if(!currentEntry)return;
   console.log('[card] span:',chosen.line,'| question:',chosen.question,'| slot:',chosen.slot);
-  alert('Line:\n"'+chosen.line+'"\n\nQuestion:\n'+chosen.question);
+  $('scTitle').textContent=(currentEntry.title||'').trim()||'Untitled';
+  $('scTime').textContent=timeStr(currentEntry.date||currentEntry.updatedAt);
+  $('scLine').textContent=chosen.line;
+  $('scQuestion').textContent=chosen.question;
+  $('cardFrame').style.display='flex';
 }
+$('cardFrameClose').addEventListener('click',closeCardFrame);
+$('cardFrame').addEventListener('click',e=>{ if(e.target.id==='cardFrame') closeCardFrame(); });
 function closeCardPicker(){ $('cardPickerOverlay').style.display='none'; }
 function openCardPicker(safeSpans){
   const list=$('cardPickerList');
