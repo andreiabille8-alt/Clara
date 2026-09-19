@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Clara" />
 <meta name="theme-color" content="#ffffff" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23B4542F'/%3E%3Cg stroke='%23FCFBF7' stroke-linecap='round' fill='none'%3E%3Cpath d='M17 20 H41' stroke-width='2.6' opacity='.45'/%3E%3Cpath d='M17 27.5 H47' stroke-width='2.6' opacity='.6'/%3E%3Cpath d='M17 35 H33' stroke-width='2.6' opacity='.75'/%3E%3Cpath d='M17 45.5 H47' stroke-width='5.5'/%3E%3C/g%3E%3C/svg%3E" />
 <title>Clara</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -58,7 +59,8 @@
   .app.sidebar-collapsed .sidebar-expand{display:inline-flex}
   .sidebar-expand svg{width:16px;height:16px;pointer-events:none}
   .brand{font-family:var(--serif);font-size:20px;font-weight:500;padding:6px 8px 14px;display:flex;align-items:center;gap:8px}
-  .brand .glyph{width:22px;height:22px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent-line);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px}
+  .brand .glyph{width:22px;height:22px;border-radius:7px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .brand .glyph svg{width:100%;height:100%;display:block}
   .search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin-bottom:14px;color:var(--faint)}
   .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:var(--type);font-family:var(--sans)}
   .search input::placeholder{color:var(--faint)}
@@ -323,16 +325,15 @@
   .card-frame-close{position:fixed;top:18px;right:18px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:20px;line-height:1;cursor:pointer;z-index:211}
   .card-frame-close:hover{background:rgba(255,255,255,.22)}
   .card-stage{position:relative;width:100%;max-width:960px;aspect-ratio:16/9;background:#D9D8D2;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:5%;box-sizing:border-box}
-  .share-card{width:100%;max-width:640px;background:#FCFBF7;border-radius:16px;padding:24px 28px 26px;box-shadow:0 18px 50px rgba(0,0,0,.45);box-sizing:border-box}
-  .sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-  .sc-header-left{display:flex;align-items:center;gap:8px;min-width:0}
-  .sc-icon{width:26px;height:26px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-family:var(--sans);font-weight:600;flex:0 0 auto}
-  .sc-title{font-family:var(--sans);font-size:17px;font-weight:700;letter-spacing:-0.012em;color:#15161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sc-time{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;letter-spacing:.06em;color:#83838A;flex:0 0 auto;margin-left:12px}
-  .sc-line{font-family:var(--journal-serif);font-size:19px;line-height:1.5;color:#A9A9AF;margin:0}
-  .sc-question-row{margin-top:24px;display:flex;align-items:center;gap:14px}
-  .sc-rule{flex:1;height:1px;background:#DEDDD7}
-  .sc-question{font-family:var(--journal-serif);font-size:19px;color:#3C3D44;white-space:nowrap}
+  .card{background:#FCFBF7;color:#15161A;border-radius:16px;max-width:620px;width:100%;padding:26px 30px 28px;box-shadow:0 18px 50px rgba(0,0,0,.45);box-sizing:border-box}
+  .card-header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px}
+  .card-header-left{display:flex;align-items:center;gap:11px;min-width:0}
+  .card-icon{width:26px;height:26px;border-radius:7px;overflow:hidden;display:flex;flex:0 0 auto}
+  .card-icon svg{width:100%;height:100%;display:block}
+  .card-title{margin:0;font-size:17px;font-weight:700;letter-spacing:-.012em;font-family:var(--sans);color:#15161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card-time{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;letter-spacing:.06em;color:#83838A;white-space:nowrap;flex:0 0 auto}
+  .card-span{font-family:var(--journal-serif);font-size:19px;line-height:1.55;color:#8A8A92;margin:0;max-width:34em}
+  .card-question{font-family:var(--journal-serif);font-size:20px;line-height:1.4;color:#2E2F35;margin:34px 0 0;max-width:34em}
   .journal-date{color:var(--faint);font-size:var(--type);white-space:nowrap}
   .journal-save{color:var(--faint);font-size:12px;margin-left:auto}
   .journal-save.saved{color:var(--ok)}
@@ -433,7 +434,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
   </button>
   <aside class="sidebar">
-    <div class="brand"><span class="glyph">C</span> Clara<button class="sidebar-collapse" id="sidebarCollapse" type="button" aria-label="Hide sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button></div>
+    <div class="brand"><span class="glyph"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="15" fill="#B4542F"/><g stroke="#FCFBF7" stroke-linecap="round" fill="none"><path d="M17 20 H41" stroke-width="2.6" opacity=".45"/><path d="M17 27.5 H47" stroke-width="2.6" opacity=".6"/><path d="M17 35 H33" stroke-width="2.6" opacity=".75"/><path d="M17 45.5 H47" stroke-width="5.5"/></g></svg></span> Clara<button class="sidebar-collapse" id="sidebarCollapse" type="button" aria-label="Hide sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button></div>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input id="searchInput" placeholder="Search   ⌘K" autocomplete="off" />
@@ -629,20 +630,16 @@
 <div class="card-frame" id="cardFrame" style="display:none">
   <button class="card-frame-close" id="cardFrameClose" type="button" aria-label="Close">×</button>
   <div class="card-stage">
-    <div class="share-card" id="shareCard">
-      <div class="sc-header">
-        <div class="sc-header-left">
-          <span class="sc-icon">C</span>
-          <span class="sc-title" id="scTitle"></span>
+    <div class="card" id="shareCard">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-icon"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="15" fill="#B4542F"/><g stroke="#FCFBF7" stroke-linecap="round" fill="none"><path d="M17 20 H41" stroke-width="2.6" opacity=".45"/><path d="M17 27.5 H47" stroke-width="2.6" opacity=".6"/><path d="M17 35 H33" stroke-width="2.6" opacity=".75"/><path d="M17 45.5 H47" stroke-width="5.5"/></g></svg></span>
+          <p class="card-title" id="scTitle"></p>
         </div>
-        <span class="sc-time" id="scTime"></span>
+        <span class="card-time" id="scTime"></span>
       </div>
-      <p class="sc-line" id="scLine"></p>
-      <div class="sc-question-row">
-        <span class="sc-rule"></span>
-        <span class="sc-question" id="scQuestion"></span>
-        <span class="sc-rule"></span>
-      </div>
+      <p class="card-span" id="scLine"></p>
+      <p class="card-question" id="scQuestion"></p>
     </div>
   </div>
 </div>
@@ -1027,6 +1024,11 @@ line in an entry is often the most defended one.
 For anything guarded, unbacked, or generic, write ONE question that would
 move it. Exposed spans do not need a question. Never "tell me more".
 
+Every question: 8 words maximum. One clause. No em dashes, no semicolons.
+Good: "what haven't you let yourself do?"
+Bad: "What is the thing you have not yet let yourself do out loud — the
+  one still waiting?"
+
 Each question must carry:
   question_type — exactly one of:
     MOMENT — what happened, when, what did you do right after
@@ -1299,11 +1301,21 @@ function getLatestScanMessage(entry){
   entry.thread.forEach(m=>{ if(m.kind==='scan'&&!m.pending) found=m; });
   return found;
 }
+const CARD_SPAN_MAX_CHARS=90;
+function isOneSentence(line){
+  const s=String(line||'').trim().replace(/[.!?]+$/,''); // drop a single trailing terminator
+  return !/[.!?]/.test(s); // any terminator left inside means a second sentence
+}
 function getCardSafeSpans(scanMsg){
   if(!scanMsg||!scanMsg.slots)return [];
   return SCAN_SLOTS
     .map(k=>Object.assign({slot:k},scanMsg.slots[k]||{}))
-    .filter(s=>s.status==='found' && s.line && String(s.layer||'').toLowerCase()===CARD_SAFE_LAYER);
+    .filter(s=>s.status==='found'
+      && s.line
+      && String(s.layer||'').toLowerCase()===CARD_SAFE_LAYER
+      && s.line.length<=CARD_SPAN_MAX_CHARS
+      && isOneSentence(s.line)
+      && isValidScanQuestion(s.question)); // defense in depth: never render a long question
 }
 function updateCardButton(){
   const btn=$('entryCard'); if(!btn)return;
@@ -1312,7 +1324,7 @@ function updateCardButton(){
   btn.style.display='';
   const safeSpans=getCardSafeSpans(scanMsg);
   btn.disabled=!safeSpans.length;
-  btn.title=safeSpans.length?'':'This entry has no surface-level line to open with.';
+  btn.title=safeSpans.length?'':'This entry has no short surface line.';
 }
 
 function entryKey(id){ return 'echo:entry:'+id; }
@@ -1639,6 +1651,17 @@ function scanPromptFor(entry, rescan){
   }
   return user;
 }
+function isValidScanQuestion(q){
+  const s=String(q||'').trim();
+  if(!s)return true; // exposed spans carry no question at all
+  if(/[—–]|;/.test(s))return false; // no em/en dashes, no semicolons
+  return s.split(/\s+/).filter(Boolean).length<=8; // 8-word hard cap
+}
+function scanQuestionsValid(data){
+  if(!data||!data.slots)return true;
+  return SCAN_SLOTS.every(k=>isValidScanQuestion(data.slots[k]&&data.slots[k].question))
+    && isValidScanQuestion(data.missing_person&&data.missing_person.question);
+}
 async function runJournalScan(opts){
   if(scanBusy||!currentEntry)return;
   persistJournal('saved');
@@ -1658,16 +1681,21 @@ async function runJournalScan(opts){
   currentEntry.thread.push({role:'clara',kind:'scan',pending:true,ts:Date.now()});
   saveEntryRecord(currentEntry);
   renderEntryChat();
-  let raw;
-  try{ raw=await callClaude(SCAN_SYSTEM,scanPromptFor(currentEntry, rescan),{temperature:REFLECTION_TEMPERATURE}); }
-  catch(e){
-    currentEntry.thread=currentEntry.thread.filter(m=>!(m.kind==='scan'&&m.pending));
-    currentEntry.thread.push({role:'clara',text:"Couldn't scan this just now — "+(e.message||'try again in a moment')+".",ts:Date.now()});
-    saveEntryRecord(currentEntry);
-    renderEntryChat();
-    scanBusy=false; $('entryScan').disabled=false; return;
+  let raw, parsed;
+  const MAX_SCAN_ATTEMPTS=3;
+  for(let attempt=1;attempt<=MAX_SCAN_ATTEMPTS;attempt++){
+    try{ raw=await callClaude(SCAN_SYSTEM,scanPromptFor(currentEntry, rescan),{temperature:REFLECTION_TEMPERATURE}); }
+    catch(e){
+      currentEntry.thread=currentEntry.thread.filter(m=>!(m.kind==='scan'&&m.pending));
+      currentEntry.thread.push({role:'clara',text:"Couldn't scan this just now — "+(e.message||'try again in a moment')+".",ts:Date.now()});
+      saveEntryRecord(currentEntry);
+      renderEntryChat();
+      scanBusy=false; $('entryScan').disabled=false; return;
+    }
+    parsed=parseScanJSON(raw);
+    // a question over the 8-word cap gets rejected and regenerated, not rendered
+    if(parsed.ok && scanQuestionsValid(parsed.data)) break;
   }
-  const parsed=parseScanJSON(raw);
   currentEntry.thread=currentEntry.thread.filter(m=>!(m.kind==='scan'&&m.pending));
   if(!parsed.ok){
     currentEntry.thread.push({role:'clara',text:"I couldn't read that scan. Try again.",ts:Date.now()});
