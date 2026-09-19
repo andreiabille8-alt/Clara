@@ -1319,12 +1319,13 @@ function getCardSafeSpans(scanMsg){
 }
 function updateCardButton(){
   const btn=$('entryCard'); if(!btn)return;
-  const scanMsg=getLatestScanMessage(currentEntry);
-  if(!scanMsg){ btn.style.display='none'; btn.disabled=false; btn.title=''; return; }
-  btn.style.display='';
-  const safeSpans=getCardSafeSpans(scanMsg);
-  btn.disabled=!safeSpans.length;
-  btn.title=safeSpans.length?'':'This entry has no short surface line.';
+  // The scan is an assistive tool, not a prerequisite — the card can trigger
+  // one itself on demand, so this only needs to know there's something to
+  // scan at all, not that a scan already happened.
+  const hasBody=!!(currentEntry&&(currentEntry.body||'').trim());
+  btn.style.display=hasBody?'':'none';
+  btn.disabled=false;
+  btn.title='';
 }
 
 function entryKey(id){ return 'echo:entry:'+id; }
@@ -2713,11 +2714,21 @@ function openCardPicker(safeSpans){
   $('cardPickerOverlay').style.display='flex';
 }
 $('cardPickerCancel').addEventListener('click',closeCardPicker);
-$('entryCard').addEventListener('click',()=>{
-  if(!currentEntry)return;
-  const scanMsg=getLatestScanMessage(currentEntry);
+$('entryCard').addEventListener('click',async()=>{
+  if(!currentEntry||!(currentEntry.body||'').trim()||scanBusy)return;
+  const btn=$('entryCard');
+  let scanMsg=getLatestScanMessage(currentEntry);
+  if(!scanMsg){
+    // no scan yet — the scan is just this feature's data source, not
+    // something the user has to run themselves first.
+    const original=btn.textContent;
+    btn.disabled=true; btn.textContent='Scanning…';
+    await runJournalScan();
+    btn.disabled=false; btn.textContent=original;
+    scanMsg=getLatestScanMessage(currentEntry);
+  }
   const safeSpans=getCardSafeSpans(scanMsg);
-  if(!safeSpans.length)return;
+  if(!safeSpans.length){ alert('This entry has no short surface line — nothing safe enough to open a card with.'); return; }
   if(safeSpans.length===1) logCardChoice(safeSpans[0]);
   else openCardPicker(safeSpans);
 });
