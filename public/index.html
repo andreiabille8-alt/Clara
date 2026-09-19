@@ -442,6 +442,7 @@
       <span class="journal-save" id="entrySave"></span>
       <button class="journal-btn" id="entryNew" type="button">New</button>
       <button class="journal-btn" id="entryScan" type="button">Scan</button>
+      <button class="journal-btn" id="entryCard" type="button" style="display:none">Make a card</button>
       <button class="journal-btn danger" id="entryDelete" type="button">Delete</button>
     </div>
     <div class="journal-scroll">
@@ -1236,6 +1237,33 @@ const LAYER_LINE={
   generic:'generic — anyone could have written this line'
 };
 
+// Shareable card: the card's opening line must be safe to post publicly —
+// never a line that cost the writer something. "generic" is the only layer
+// the scan grades as zero-vulnerability ("anyone could have written this
+// line"), so that's what counts as a card-safe span.
+const CARD_SAFE_LAYER='generic';
+function getLatestScanMessage(entry){
+  if(!entry||!Array.isArray(entry.thread))return null;
+  let found=null;
+  entry.thread.forEach(m=>{ if(m.kind==='scan'&&!m.pending) found=m; });
+  return found;
+}
+function getCardSafeSpans(scanMsg){
+  if(!scanMsg||!scanMsg.slots)return [];
+  return SCAN_SLOTS
+    .map(k=>Object.assign({slot:k},scanMsg.slots[k]||{}))
+    .filter(s=>s.status==='found' && s.line && String(s.layer||'').toLowerCase()===CARD_SAFE_LAYER);
+}
+function updateCardButton(){
+  const btn=$('entryCard'); if(!btn)return;
+  const scanMsg=getLatestScanMessage(currentEntry);
+  if(!scanMsg){ btn.style.display='none'; btn.disabled=false; btn.title=''; return; }
+  btn.style.display='';
+  const safeSpans=getCardSafeSpans(scanMsg);
+  btn.disabled=!safeSpans.length;
+  btn.title=safeSpans.length?'':'This entry has no surface-level line to open with.';
+}
+
 function entryKey(id){ return 'echo:entry:'+id; }
 function loadEntry(id){
   try{
@@ -1933,6 +1961,7 @@ function renderEntryChat(){
   if(back) back.style.display='none';
   if(head) head.style.display='';
   if(!currentEntry){ b.innerHTML=''; syncBotThinking(); return; }
+  updateCardButton();
   if(!Array.isArray(currentEntry.thread)) currentEntry.thread=[];
   const thread=currentEntry.thread;
   if(!thread.length){
@@ -2580,6 +2609,15 @@ $('entryBody').addEventListener('keydown',trapTabKey);
 $('entryNew').addEventListener('click',startNewEntry);
 $('entriesNew').addEventListener('click',startNewEntry);
 $('entryScan').addEventListener('click',runJournalScan);
+$('entryCard').addEventListener('click',()=>{
+  if(!currentEntry)return;
+  const scanMsg=getLatestScanMessage(currentEntry);
+  const safeSpans=getCardSafeSpans(scanMsg);
+  if(!safeSpans.length)return;
+  const chosen=safeSpans[0]; // step 1 only: real picker for multiple spans comes in step 2
+  console.log('[card] span:',chosen.line,'| question:',chosen.question,'| slot:',chosen.slot);
+  alert('Line:\n"'+chosen.line+'"\n\nQuestion:\n'+chosen.question);
+});
 $('entryDelete').addEventListener('click',()=>{ if(currentEntry) deleteJournalEntry(currentEntry.id); });
 
 function hideJournalCaret(){ const el=$('journalCaret'); if(!el)return; el.classList.remove('show','blink'); }
