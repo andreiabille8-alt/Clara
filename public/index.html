@@ -309,6 +309,15 @@
   .journal-bar{display:flex;align-items:center;gap:10px;padding-top:10px;padding-bottom:0;flex:0 0 auto}
   .mobile-nav-toggle,.mobile-nav-scrim{display:none}
   .mobile-nav-toggle svg{width:18px;height:18px;pointer-events:none}
+
+  .card-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:20px}
+  .card-picker{background:var(--bg);border-radius:var(--radius);padding:20px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto}
+  .card-picker-head{font-family:var(--serif);font-size:17px;font-weight:500;margin-bottom:14px}
+  .card-picker-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .card-picker-item{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;cursor:pointer;font-family:var(--sans)}
+  .card-picker-item:hover{border-color:var(--accent-line)}
+  .card-picker-item .cp-line{font-family:var(--serif);font-size:15px;color:var(--text);margin-bottom:6px;line-height:1.5}
+  .card-picker-item .cp-q{font-size:12.5px;color:var(--faint)}
   .journal-date{color:var(--faint);font-size:var(--type);white-space:nowrap}
   .journal-save{color:var(--faint);font-size:12px;margin-left:auto}
   .journal-save.saved{color:var(--ok)}
@@ -594,6 +603,13 @@
       </div>
     </div>
   </main>
+</div>
+<div class="card-picker-overlay" id="cardPickerOverlay" style="display:none">
+  <div class="card-picker">
+    <div class="card-picker-head">Pick the line to open with</div>
+    <div class="card-picker-list" id="cardPickerList"></div>
+    <button class="journal-btn" id="cardPickerCancel" type="button">Cancel</button>
+  </div>
 </div>
 <button class="clara-bot" id="claraBot" type="button" aria-label="Talk with Clara" aria-pressed="false">
   <span class="clara-bot-figure" aria-hidden="true">
@@ -2609,14 +2625,30 @@ $('entryBody').addEventListener('keydown',trapTabKey);
 $('entryNew').addEventListener('click',startNewEntry);
 $('entriesNew').addEventListener('click',startNewEntry);
 $('entryScan').addEventListener('click',runJournalScan);
+function logCardChoice(chosen){
+  console.log('[card] span:',chosen.line,'| question:',chosen.question,'| slot:',chosen.slot);
+  alert('Line:\n"'+chosen.line+'"\n\nQuestion:\n'+chosen.question);
+}
+function closeCardPicker(){ $('cardPickerOverlay').style.display='none'; }
+function openCardPicker(safeSpans){
+  const list=$('cardPickerList');
+  list.innerHTML=safeSpans.map((s,i)=>`<button type="button" class="card-picker-item" data-i="${i}"><div class="cp-line">"${esc(s.line)}"</div><div class="cp-q">${esc(s.question)}</div></button>`).join('');
+  list.querySelectorAll('.card-picker-item').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      closeCardPicker();
+      logCardChoice(safeSpans[Number(btn.dataset.i)]);
+    });
+  });
+  $('cardPickerOverlay').style.display='flex';
+}
+$('cardPickerCancel').addEventListener('click',closeCardPicker);
 $('entryCard').addEventListener('click',()=>{
   if(!currentEntry)return;
   const scanMsg=getLatestScanMessage(currentEntry);
   const safeSpans=getCardSafeSpans(scanMsg);
   if(!safeSpans.length)return;
-  const chosen=safeSpans[0]; // step 1 only: real picker for multiple spans comes in step 2
-  console.log('[card] span:',chosen.line,'| question:',chosen.question,'| slot:',chosen.slot);
-  alert('Line:\n"'+chosen.line+'"\n\nQuestion:\n'+chosen.question);
+  if(safeSpans.length===1) logCardChoice(safeSpans[0]);
+  else openCardPicker(safeSpans);
 });
 $('entryDelete').addEventListener('click',()=>{ if(currentEntry) deleteJournalEntry(currentEntry.id); });
 
